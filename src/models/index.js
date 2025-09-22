@@ -7,6 +7,7 @@ const directMessages = [];
 const friendships = [];
 const friendRequests = [];
 const serverMembers = [];
+const roles = [];
 
 // Data Models Structure:
 
@@ -80,7 +81,22 @@ const serverMembers = [];
  *   serverId: number,
  *   userId: number,
  *   role: 'owner' | 'admin' | 'member',
+ *   roleId: number (optional, custom role ID),
  *   joinedAt: Date
+ * }
+ */
+
+/**
+ * Role Model
+ * {
+ *   id: number,
+ *   serverId: number,
+ *   name: string,
+ *   color: string (hex color),
+ *   permissions: string[] (array of permission strings),
+ *   position: number (higher = more priority),
+ *   isDefault: boolean,
+ *   createdAt: Date
  * }
  */
 
@@ -101,6 +117,7 @@ module.exports = {
     friendships,
     friendRequests,
     serverMembers,
+    roles,
     generateId,
     generateInviteCode
 };

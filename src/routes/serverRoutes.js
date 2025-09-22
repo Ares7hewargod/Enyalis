@@ -10,6 +10,7 @@ router.use(authenticateToken);
 router.post('/', serverController.createServer);
 router.post('/join', serverController.joinServer);
 router.get('/', serverController.getUserServers);
+router.put('/:serverId', serverController.updateServer);
 
 // Member management
 router.get('/:serverId/members', serverController.getServerMembers);
@@ -17,5 +18,14 @@ router.get('/:serverId/members', serverController.getServerMembers);
 // Channel management
 router.get('/:serverId/channels', serverController.getServerChannels);
 router.post('/:serverId/channels', serverController.createChannel);
+
+// Role management
+router.get('/:serverId/roles', serverController.getServerRoles);
+router.post('/:serverId/roles', serverController.createRole);
+router.put('/:serverId/roles/:roleId', serverController.updateRole);
+router.delete('/:serverId/roles/:roleId', serverController.deleteRole);
+
+// Member role management
+router.put('/:serverId/members/:userId/role', serverController.updateMemberRole);
 
 module.exports = router;

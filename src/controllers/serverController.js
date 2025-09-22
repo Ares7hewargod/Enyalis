@@ -1,4 +1,4 @@
-const { servers, channels, serverMembers, generateId, generateInviteCode } = require('../models');
+const { servers, channels, serverMembers, roles, generateId, generateInviteCode } = require('../models');
 const { getUserById } = require('./userController');
 
 // Create a new server
@@ -253,11 +253,101 @@ exports.getServerMembers = (req, res) => {
     }
 };
 
+// Update server settings (owner only)
+exports.updateServer = (req, res) => {
+    try {
+        const { serverId } = req.params;
+        const { name, description, icon } = req.body;
+        const userId = req.userId;
+
+        const server = servers.find(s => s.id == serverId);
+        if (!server) {
+            return res.status(404).json({ error: 'Server not found' });
+        }
+
+        // Check if user is the server owner
+        if (server.ownerId !== userId) {
+            return res.status(403).json({ error: 'Only server owners can update server settings' });
+        }
+
+        // Update server properties
+        if (name !== undefined && name.trim()) {
+            server.name = name.trim();
+        }
+        if (description !== undefined) {
+            server.description = description.trim();
+        }
+        if (icon !== undefined) {
+            server.icon = icon;
+        }
+
+        server.updatedAt = new Date();
+
+        res.json({
+            server,
+            message: 'Server updated successfully'
+        });
+    } catch (error) {
+        console.error('Update server error:', error);
+        res.status(500).json({ error: 'Failed to update server' });
+    }
+};
+
+// Get server roles
+exports.getServerRoles = (req, res) => {
+    try {
+        const { serverId } = req.params;
+        const userId = req.userId;
+
+        // Check if user is a member of this server
+        const membership = serverMembers.find(m => 
+            m.serverId == serverId && m.userId === userId
+        );
+
+        if (!membership) {
+            return res.status(403).json({ error: 'You are not a member of this server' });
+        }
+
+        // Get server roles from global array (will be added to models)
+        const serverRoles = [];
+        res.json({ roles: serverRoles });
+    } catch (error) {
+        console.error('Get server roles error:', error);
+        res.status(500).json({ error: 'Failed to get server roles' });
+    }
+};
+
+// Create new role (owner/admin only) - placeholder
+exports.createRole = (req, res) => {
+    res.status(501).json({ error: 'Role creation coming soon' });
+};
+
+// Update role (owner/admin only) - placeholder
+exports.updateRole = (req, res) => {
+    res.status(501).json({ error: 'Role update coming soon' });
+};
+
+// Delete role (owner/admin only) - placeholder
+exports.deleteRole = (req, res) => {
+    res.status(501).json({ error: 'Role deletion coming soon' });
+};
+
+// Update member role (owner/admin only) - placeholder
+exports.updateMemberRole = (req, res) => {
+    res.status(501).json({ error: 'Member role update coming soon' });
+};
+
 module.exports = {
     createServer: exports.createServer,
     joinServer: exports.joinServer,
     getUserServers: exports.getUserServers,
     getServerChannels: exports.getServerChannels,
     createChannel: exports.createChannel,
-    getServerMembers: exports.getServerMembers
+    getServerMembers: exports.getServerMembers,
+    updateServer: exports.updateServer,
+    getServerRoles: exports.getServerRoles,
+    createRole: exports.createRole,
+    updateRole: exports.updateRole,
+    deleteRole: exports.deleteRole,
+    updateMemberRole: exports.updateMemberRole
 };
