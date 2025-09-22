@@ -147,14 +147,21 @@ exports.getServerChannels = (req, res) => {
 exports.createChannel = (req, res) => {
     try {
         const { serverId } = req.params;
-        const { name, type = 'text' } = req.body;
+        const { name, description, type = 'text' } = req.body;
         const userId = req.userId;
+
+        console.log('Creating channel:', { serverId, name, description, userId });
+        console.log('Request userId:', userId);
+        console.log('Request params:', req.params);
+        console.log('Request body:', req.body);
 
         // Check if user has permission (owner or admin)
         const membership = serverMembers.find(m => 
             m.serverId == serverId && m.userId === userId && 
             (m.role === 'owner' || m.role === 'admin')
         );
+
+        console.log('User membership:', membership);
 
         if (!membership) {
             return res.status(403).json({ error: 'You do not have permission to create channels' });
@@ -171,8 +178,9 @@ exports.createChannel = (req, res) => {
 
         const channel = {
             id: generateId(),
-            serverId: parseInt(serverId),
+            serverId: parseFloat(serverId), // Use parseFloat to preserve decimal precision
             name: name.trim().toLowerCase().replace(/\s+/g, '-'),
+            description: description || '',
             type: type,
             position: maxPosition + 1,
             createdAt: new Date()
@@ -190,10 +198,66 @@ exports.createChannel = (req, res) => {
     }
 };
 
+// Get server members
+exports.getServerMembers = (req, res) => {
+    try {
+        const { serverId } = req.params;
+        const userId = req.userId;
+        
+        console.log('Getting members for server:', serverId, 'by user:', userId);
+        
+        // Verify server exists
+        const server = servers.find(s => s.id == serverId);
+        if (!server) {
+            return res.status(404).json({ error: 'Server not found' });
+        }
+        
+        // Check if user is member of the server
+        const userMembership = serverMembers.find(m => 
+            m.serverId == serverId && m.userId === userId
+        );
+        
+        if (!userMembership) {
+            return res.status(403).json({ error: 'You do not have access to this server' });
+        }
+        
+        // Get all server members with user info
+        const members = serverMembers
+            .filter(m => m.serverId == serverId)
+            .map(membership => {
+                const user = getUserById(membership.userId);
+                return {
+                    userId: membership.userId,
+                    username: user ? user.username : `User ${membership.userId}`,
+                    role: membership.role,
+                    joinedAt: membership.joinedAt
+                };
+            })
+            .sort((a, b) => {
+                // Sort by role priority: owner > admin > member
+                const rolePriority = { owner: 0, admin: 1, member: 2 };
+                const aPriority = rolePriority[a.role] || 999;
+                const bPriority = rolePriority[b.role] || 999;
+                if (aPriority !== bPriority) {
+                    return aPriority - bPriority;
+                }
+                // Then sort by username
+                return a.username.localeCompare(b.username);
+            });
+        
+        console.log('Found members:', members.length);
+        res.json({ members });
+    } catch (error) {
+        console.error('Get server members error:', error);
+        res.status(500).json({ error: 'Failed to get server members' });
+    }
+};
+
 module.exports = {
     createServer: exports.createServer,
     joinServer: exports.joinServer,
     getUserServers: exports.getUserServers,
     getServerChannels: exports.getServerChannels,
-    createChannel: exports.createChannel
+    createChannel: exports.createChannel,
+    getServerMembers: exports.getServerMembers
 };

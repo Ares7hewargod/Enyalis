@@ -21,6 +21,7 @@
             background: #36393f;
             color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
         }
 
         /* Server List (Left Panel) */
@@ -126,6 +127,35 @@
             text-transform: uppercase;
             margin: 16px 8px 0;
             letter-spacing: 0.02em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .channel-manage-btn {
+            background: none;
+            border: none;
+            color: #8e9297;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .channel-category:hover .channel-manage-btn {
+            opacity: 1;
+        }
+
+        .channel-manage-btn:hover {
+            background: #40444b;
+            color: #dcddde;
         }
 
         .channel-list {
@@ -214,6 +244,13 @@
             margin-top: 2px;
         }
 
+        .no-dms {
+            text-align: center;
+            color: #72767d;
+            font-size: 14px;
+            padding: 20px;
+        }
+
         .channel-icon {
             width: 20px;
             margin-right: 6px;
@@ -274,11 +311,109 @@
             color: #8e9297;
         }
 
-        /* Chat Area (Right Panel) */
+        /* Chat Area (Main Panel) */
         .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
+            position: relative;
+            z-index: 1;
+            min-height: 0;
+            height: 100%;
+            overflow: hidden;
+            transition: margin-right 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .chat-area.no-transition {
+            transition: none !important;
+        }
+
+        .chat-area.expanded {
+            margin-right: -240px; /* Expand into members panel space */
+        }
+
+        .members-panel {
+            width: 240px;
+            background: #2f3136;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #202225;
+            transform: translateX(0);
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .members-panel.collapsed {
+            transform: translateX(100%); /* Slide completely out */
+        }
+
+        .members-header {
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #202225;
+            color: #8e9297;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .members-count {
+            color: #8e9297;
+        }
+
+        .members-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            color: #dcddde;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .member-item:hover {
+            background-color: #34373c;
+        }
+
+        .member-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #5865f2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        .member-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .member-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .member-role {
+            font-size: 12px;
+            color: #8e9297;
         }
 
         .chat-header {
@@ -288,6 +423,52 @@
             display: flex;
             align-items: center;
             padding: 0 16px;
+            flex-shrink: 0;
+        }
+
+        .members-toggle-btn {
+            background: #36393f;
+            border: 1px solid #202225;
+            color: #8e9297;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px 0 0 4px;
+            position: fixed;
+            right: 240px; /* Start at panel edge */
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 10;
+            width: 30px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        .members-toggle-btn:hover {
+            background: #40444b;
+            color: #dcddde;
+        }
+
+        .members-toggle-btn.collapsed {
+            right: 0; /* Move to right edge when panel is hidden */
+            border-radius: 4px 0 0 4px;
+            background: #5865f2;
+            color: white;
+        }
+
+        /* Arrow rotation animation */
+        .members-toggle-btn .arrow {
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-size: 16px;
+        }
+
+        .members-toggle-btn.collapsed .arrow {
+            transform: rotate(180deg);
         }
 
         .channel-name {
@@ -303,9 +484,14 @@
         }
 
         .messages-area {
-            flex: 1;
+            position: absolute;
+            top: 48px; /* Below chat header */
+            bottom: 0;
+            left: 0;
+            right: 0;
             overflow-y: auto;
             padding: 16px;
+            padding-bottom: 120px; /* Add space for message input */
             background: #36393f;
         }
 
@@ -406,6 +592,12 @@
         .message-input-area {
             padding: 0 16px 24px;
             background: #36393f;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            border-top: 1px solid #40444b;
         }
 
         .message-input-container {
@@ -505,6 +697,13 @@
             outline: none;
         }
 
+        .form-help {
+            font-size: 12px;
+            color: #8e9297;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
         .modal-actions {
             display: flex;
             gap: 12px;
@@ -554,6 +753,11 @@
             padding: 8px 16px;
             background: #40444b;
             border-top: 1px solid #202225;
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            z-index: 11;
         }
 
         .image-preview-container {
@@ -711,6 +915,12 @@
             padding: 40px;
             background: var(--bg-primary);
             align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
         }
 
         .friends-container {
@@ -1132,7 +1342,8 @@
             <div class="server-separator"></div>
             <!-- User servers will be populated here -->
             <div id="user-servers"></div>
-            <div class="server-icon add-server" onclick="showCreateServerModal()">+</div>
+            <div class="server-icon add-server" onclick="showCreateServerModal()" title="Create Server">+</div>
+            <div class="server-icon add-server" onclick="showJoinServerModal()" title="Join Server" style="background: #43b581;">📥</div>
         </div>
 
         <!-- Channel Panel -->
@@ -1163,7 +1374,10 @@
 
                 <!-- Server channels section -->
                 <div id="server-channels-section" style="display: none;">
-                    <div class="channel-category">Text Channels</div>
+                    <div class="channel-category">
+                        <span>Text Channels</span>
+                        <button class="channel-manage-btn" id="add-channel-btn" onclick="showCreateChannelModal()" title="Create Channel">+</button>
+                    </div>
                     <ul class="channel-list" id="text-channels-list"></ul>
                 </div>
             </div>
@@ -1180,7 +1394,7 @@
         </div>
 
         <!-- Chat Area -->
-        <div class="chat-area">
+        <div class="chat-area" id="chat-area">
             <div class="chat-header">
                 <span class="channel-icon" id="header-icon">#</span>
                 <span class="channel-name" id="current-channel-name">Welcome</span>
@@ -1191,6 +1405,22 @@
                 <div class="welcome-message" id="default-welcome">
                     <h3>🎉 Welcome to Enyalis!</h3>
                     <p>Create a server or join one with an invite code to start chatting.</p>
+                </div>
+            </div>
+
+            <!-- Message Input Area -->
+            <div class="image-preview-area" id="image-preview-area">
+                <div class="image-preview-container" id="image-preview-container"></div>
+            </div>
+
+            <div class="message-input-area" id="message-input-area" style="display: none;">
+                <div class="message-input-container">
+                    <input type="file" class="file-input" id="image-input" accept="image/*" multiple>
+                    <input type="text" class="message-input" id="message-input" placeholder="Message...">
+                    <div class="message-actions">
+                        <button class="action-btn" onclick="document.getElementById('image-input').click()">📎</button>
+                        <button class="action-btn" id="send-btn" onclick="sendMessage()">➤</button>
+                    </div>
                 </div>
             </div>
             
@@ -1248,22 +1478,23 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="image-preview-area" id="image-preview-area">
-                <div class="image-preview-container" id="image-preview-container"></div>
+        <!-- Members Panel -->
+        <div class="members-panel" id="members-panel" style="display: none;">
+            <div class="members-header">
+                <span>Members</span>
+                <span class="members-count" id="members-count">0</span>
             </div>
-
-            <div class="message-input-area" id="message-input-area" style="display: none;">
-                <div class="message-input-container">
-                    <input type="file" class="file-input" id="image-input" accept="image/*" multiple>
-                    <input type="text" class="message-input" id="message-input" placeholder="Message...">
-                    <div class="message-actions">
-                        <button class="action-btn" onclick="document.getElementById('image-input').click()">📎</button>
-                        <button class="action-btn" id="send-btn" onclick="sendMessage()">➤</button>
-                    </div>
-                </div>
+            <div class="members-list" id="members-list">
+                <!-- Members will be populated here -->
             </div>
         </div>
+        
+        <!-- Floating Members Toggle Button -->
+        <button class="members-toggle-btn" id="members-toggle" onclick="toggleMembersPanel()" title="Toggle Members" style="display: none;">
+            <span class="arrow">◄</span>
+        </button>
     </div>
 
     <!-- Image Modal -->
@@ -1298,8 +1529,9 @@
             <div class="modal-header">Join a Server</div>
             <form id="join-server-form" onsubmit="joinServer(event)">
                 <div class="form-group">
-                    <label class="form-label">Invite Code</label>
-                    <input type="text" class="form-input" id="invite-code" placeholder="Enter invite code" required>
+                    <label class="form-label">Invite Code or Link</label>
+                    <input type="text" class="form-input" id="invite-code" placeholder="Enter invite code (e.g., ABC123) or paste invite link" required>
+                    <small class="form-help">You can paste a full invite link or just enter the code</small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="hideJoinServerModal()">Cancel</button>
@@ -1343,6 +1575,28 @@
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="hideInviteModal()">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Create Channel Modal -->
+    <div id="create-channel-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Create Channel</div>
+            <form onsubmit="createChannel(event)">
+                <div class="form-group">
+                    <label class="form-label">Channel Name</label>
+                    <input type="text" class="form-input" id="channel-name" placeholder="new-channel" required>
+                    <div class="form-help">Channel names must be lowercase and can contain letters, numbers, and hyphens.</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Channel Description</label>
+                    <input type="text" class="form-input" id="channel-description" placeholder="What's this channel about?">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideCreateChannelModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Channel</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1499,8 +1753,27 @@
                         const sender = { id: message.senderId, username: message.username };
                         addToDMList(sender);
                     }
+                    
+                    // Update direct messages cache and refresh DM list
+                    const otherUserId = message.senderId === parseInt(localStorage.getItem('userId')) ? message.recipientId : message.senderId;
+                    let userMessages = directMessages.get(otherUserId) || [];
+                    userMessages.push(message);
+                    directMessages.set(otherUserId, userMessages);
+                    updateDMList();
                 } else {
                     console.log('DM not for current conversation - message for:', message.senderId, message.recipientId, 'current user:', currentDMUser?.id);
+                    
+                    // Still add to cache and update DM list for other conversations
+                    const otherUserId = message.senderId === parseInt(localStorage.getItem('userId')) ? message.recipientId : message.senderId;
+                    let userMessages = directMessages.get(otherUserId) || [];
+                    userMessages.push(message);
+                    directMessages.set(otherUserId, userMessages);
+                    
+                    // Add sender to DM list if not current user
+                    if (message.senderId !== parseInt(localStorage.getItem('userId'))) {
+                        const sender = { id: message.senderId, username: message.username };
+                        addToDMList(sender);
+                    }
                 }
             });
         }
@@ -1557,6 +1830,9 @@
             document.getElementById('server-channels-section').style.display = 'none';
             document.getElementById('invite-btn').style.display = 'none';
             
+            // Hide members panel when not in a server
+            hideMembersPanel();
+            
             // Show friends main area
             showFriendsMain();
         }
@@ -1578,10 +1854,17 @@
             document.getElementById('invite-btn').style.display = 'block';
             document.getElementById('message-input-area').style.display = 'block';
             
+            // Show members panel for servers (will restore saved state)
+            showMembersPanel();
+            
             document.getElementById('current-server-name').textContent = server.name;
             
-            // Load server channels
+            // Load server channels and members
             await loadServerChannels(server.id);
+            await loadServerMembers(server.id);
+            
+            // Check if user has permission to manage channels
+            checkChannelManagementPermission(server.id);
         }
 
         // Load channels for a server
@@ -1944,7 +2227,22 @@
         async function joinServer(event) {
             event.preventDefault();
             
-            const inviteCode = document.getElementById('invite-code').value.trim();
+            let inviteInput = document.getElementById('invite-code').value.trim();
+            
+            // Extract invite code from URL if it's a full invite link
+            let inviteCode = inviteInput;
+            if (inviteInput.includes('/invite/')) {
+                // Extract code from URL like "http://localhost:3000/invite/ABC123"
+                const matches = inviteInput.match(/\/invite\/([A-Za-z0-9]+)/);
+                if (matches && matches[1]) {
+                    inviteCode = matches[1];
+                }
+            }
+            
+            if (!inviteCode) {
+                alert('Please enter a valid invite code or link');
+                return;
+            }
             
             try {
                 const response = await fetch('/api/servers/join', {
@@ -1957,11 +2255,17 @@
                 });
 
                 if (response.ok) {
+                    const result = await response.json();
                     hideJoinServerModal();
                     await loadUserServers(); // Reload servers
+                    showNotification(`Successfully joined "${result.serverName}"!`, 'success');
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Failed to join server');
                 }
             } catch (error) {
                 console.error('Error joining server:', error);
+                alert('Failed to join server. Please try again.');
             }
         }
 
@@ -2387,6 +2691,7 @@
             
             // Update sidebar selection
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.dm-item').forEach(item => item.classList.remove('active')); // Unhighlight DM items
             document.querySelector('[onclick="showFriendsMain()"]').classList.add('active');
             
             // Update server list
@@ -2394,6 +2699,7 @@
             document.querySelector('.server-icon.home').classList.add('active');
             
             // Update header
+            document.getElementById('current-server-name').textContent = 'Friends';
             document.getElementById('header-icon').textContent = '👥';
             document.getElementById('current-channel-name').textContent = 'Friends';
             document.getElementById('current-channel-info').textContent = 'Manage your friends and connections';
@@ -3045,16 +3351,17 @@
                 if (response.ok) {
                     const messages = await response.json();
                     console.log('Received DM messages:', messages);
-                    directMessages.set(userId, messages);
+                    directMessages.set(parseInt(userId), messages);
                     displayMessages(messages);
+                    updateDMList(); // Refresh DM list with latest message preview
                 } else {
                     console.log('No DM messages found, starting fresh conversation');
-                    directMessages.set(userId, []);
+                    directMessages.set(parseInt(userId), []);
                     displayMessages([]);
                 }
             } catch (error) {
                 console.error('Error loading direct messages:', error);
-                directMessages.set(userId, []);
+                directMessages.set(parseInt(userId), []);
                 displayMessages([]);
             }
         }
@@ -3072,6 +3379,44 @@
             console.log('DM users list:', Array.from(dmUsers.values()));
         }
         
+        // Ensure correct sidebar highlighting
+        function ensureCorrectHighlighting() {
+            if (currentView === 'dm' && currentDMUser) {
+                const targetDMItem = document.querySelector(`[data-user-id="${currentDMUser.id}"]`);
+                
+                // Only update if highlighting is incorrect
+                if (targetDMItem && !targetDMItem.classList.contains('active')) {
+                    // Remove all active states
+                    document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+                    document.querySelectorAll('.dm-item').forEach(item => item.classList.remove('active'));
+                    
+                    // Highlight the current DM conversation
+                    targetDMItem.classList.add('active');
+                }
+            } else if (currentView === 'friends') {
+                const friendsBtn = document.querySelector('[data-view="friends"]');
+                
+                // Only update if highlighting is incorrect
+                if (friendsBtn && !friendsBtn.classList.contains('active')) {
+                    document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+                    document.querySelectorAll('.dm-item').forEach(item => item.classList.remove('active'));
+                    friendsBtn.classList.add('active');
+                }
+            }
+        }
+        
+        // Get last message preview for DM list
+        function getLastMessagePreview(userId) {
+            const userMessages = directMessages.get(parseInt(userId));
+            if (!userMessages || userMessages.length === 0) {
+                return 'Click to start conversation';
+            }
+            
+            const lastMessage = userMessages[userMessages.length - 1];
+            const preview = lastMessage.text || 'Image';
+            return preview.length > 30 ? preview.substring(0, 30) + '...' : preview;
+        }
+        
         // Update DM list display
         function updateDMList() {
             const dmList = document.getElementById('dm-conversations');
@@ -3087,15 +3432,37 @@
                 return;
             }
             
-            dmList.innerHTML = Array.from(dmUsers.values()).map(user => `
-                <div class="dm-item" onclick="openDirectMessage('${user.id}', '${user.username}')">
-                    <div class="dm-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                    <div class="dm-info">
-                        <div class="dm-username">${user.username}</div>
-                        <div class="dm-last-message">Click to start conversation</div>
+            // Check if we need to regenerate the entire list or just update previews
+            const existingItems = dmList.querySelectorAll('.dm-item');
+            const currentUserIds = Array.from(dmUsers.keys());
+            const existingUserIds = Array.from(existingItems).map(item => parseInt(item.dataset.userId));
+            
+            // If user list changed, regenerate entire list
+            if (currentUserIds.length !== existingUserIds.length || 
+                !currentUserIds.every(id => existingUserIds.includes(id))) {
+                
+                dmList.innerHTML = Array.from(dmUsers.values()).map(user => `
+                    <div class="dm-item" onclick="openDirectMessage('${user.id}', '${user.username}')" data-user-id="${user.id}">
+                        <div class="dm-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                        <div class="dm-info">
+                            <div class="dm-username">${user.username}</div>
+                            <div class="dm-last-message">${getLastMessagePreview(user.id)}</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+                
+                // Restore highlighting after regeneration
+                setTimeout(() => ensureCorrectHighlighting(), 10);
+            } else {
+                // Just update message previews without regenerating HTML
+                existingItems.forEach(item => {
+                    const userId = parseInt(item.dataset.userId);
+                    const messageElement = item.querySelector('.dm-last-message');
+                    if (messageElement) {
+                        messageElement.textContent = getLastMessagePreview(userId);
+                    }
+                });
+            }
         }
         
         // Open direct message conversation
@@ -3112,20 +3479,33 @@
             document.getElementById('message-input-area').style.display = 'block';
             document.querySelector('.server-icon.active')?.classList.remove('active');
             
-            // Activate friends section in sidebar
+            // Activate friends section in sidebar, but not the Friends button itself when in DM
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
-            document.querySelector('[data-view="friends"]')?.classList.add('active');
+            // Don't highlight the Friends button when in a specific DM conversation
+            
+            // Highlight current DM conversation immediately
+            document.querySelectorAll('.dm-item').forEach(item => item.classList.remove('active'));
+            document.querySelector(`[data-user-id="${userId}"]`)?.classList.add('active');
             
             // Update header to show DM conversation
             document.getElementById('current-server-name').textContent = `Direct Message with ${username}`;
+            document.getElementById('header-icon').textContent = '💬';
+            document.getElementById('current-channel-name').textContent = username;
+            document.getElementById('current-channel-info').textContent = 'Direct Message';
             
             // Hide friends main area and show chat area
             document.getElementById('friends-main-area').style.display = 'none';
-            document.getElementById('chat-area').style.display = 'block';
+            document.getElementById('chat-area').style.display = 'flex';
+            document.getElementById('messages-container').style.display = 'block';
             
             // Clear messages and load DM messages
             document.getElementById('messages-container').innerHTML = '';
             loadDirectMessages(userId);
+            
+            // Ensure DM highlighting persists after async operations
+            setTimeout(() => {
+                ensureCorrectHighlighting();
+            }, 10);
         }
 
         // Load DM conversations list
@@ -3176,6 +3556,270 @@
             }
             if (event.target === profileModal) {
                 closeUserProfile();
+            }
+        }
+
+        // Channel Management Functions
+        function showCreateChannelModal() {
+            if (!currentServer) return;
+            document.getElementById('create-channel-modal').style.display = 'block';
+        }
+
+        function hideCreateChannelModal() {
+            document.getElementById('create-channel-modal').style.display = 'none';
+            document.getElementById('channel-name').value = '';
+            document.getElementById('channel-description').value = '';
+        }
+
+        async function createChannel(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('channel-name').value.trim();
+            const description = document.getElementById('channel-description').value.trim();
+            
+            if (!name || !currentServer) return;
+            
+            try {
+                const response = await fetch(`/api/servers/${currentServer.id}/channels`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        name: name.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                        description
+                    })
+                });
+
+                if (response.ok) {
+                    hideCreateChannelModal();
+                    await loadServerChannels(currentServer.id);
+                    showNotification('Channel created successfully!', 'success');
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Failed to create channel');
+                }
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                alert('Failed to create channel. Please try again.');
+            }
+        }
+
+        // Members Panel Functions
+        // Members panel state
+        let membersPanelCollapsed = false;
+
+        function showMembersPanel() {
+            const panel = document.getElementById('members-panel');
+            const toggleBtn = document.getElementById('members-toggle');
+            const chatArea = document.getElementById('chat-area');
+            
+            // Temporarily disable transitions to prevent stretching animation
+            chatArea.classList.add('no-transition');
+            
+            // Pre-set the state based on server preferences BEFORE showing elements
+            let shouldBeCollapsed = false;
+            if (currentServer && currentServer.id) {
+                const serverPrefs = getServerPreferences(currentServer.id);
+                shouldBeCollapsed = serverPrefs.membersPanelCollapsed;
+                membersPanelCollapsed = shouldBeCollapsed;
+            } else {
+                membersPanelCollapsed = false;
+            }
+            
+            // Set all classes immediately before showing to prevent visual stretching
+            if (shouldBeCollapsed) {
+                panel.classList.add('collapsed');
+                toggleBtn.classList.add('collapsed');
+                chatArea.classList.add('expanded');
+            } else {
+                panel.classList.remove('collapsed');
+                toggleBtn.classList.remove('collapsed');
+                chatArea.classList.remove('expanded');
+            }
+            
+            // Show the elements after state is set
+            panel.style.display = 'flex';
+            toggleBtn.style.display = 'flex';
+            
+            // Re-enable transitions after the DOM has updated
+            requestAnimationFrame(() => {
+                chatArea.classList.remove('no-transition');
+            });
+            
+            console.log(`Showed members panel for server ${currentServer?.id || 'unknown'} with collapsed state:`, shouldBeCollapsed);
+        }
+
+        function hideMembersPanel() {
+            const panel = document.getElementById('members-panel');
+            const toggleBtn = document.getElementById('members-toggle');
+            const chatArea = document.getElementById('chat-area');
+            
+            panel.style.display = 'none';
+            toggleBtn.style.display = 'none';
+            
+            // Reset state and clean up classes
+            membersPanelCollapsed = false;
+            panel.classList.remove('collapsed');
+            toggleBtn.classList.remove('collapsed');
+            chatArea.classList.remove('expanded', 'no-transition');
+        }
+
+        function toggleMembersPanel() {
+            const panel = document.getElementById('members-panel');
+            const toggleBtn = document.getElementById('members-toggle');
+            const chatArea = document.getElementById('chat-area');
+            
+            membersPanelCollapsed = !membersPanelCollapsed;
+            
+            if (membersPanelCollapsed) {
+                // Hide panel and expand chat area
+                panel.classList.add('collapsed');
+                toggleBtn.classList.add('collapsed');
+                chatArea.classList.add('expanded');
+            } else {
+                // Show panel and restore chat area
+                panel.classList.remove('collapsed');
+                toggleBtn.classList.remove('collapsed');
+                chatArea.classList.remove('expanded');
+            }
+            
+            // Save the panel state for current server
+            saveMembersPanelState();
+        }
+
+        // Helper functions for server-specific preferences
+        function saveMembersPanelState() {
+            if (currentServer && currentServer.id) {
+                const serverPrefs = getServerPreferences(currentServer.id);
+                serverPrefs.membersPanelCollapsed = membersPanelCollapsed;
+                saveServerPreferences(currentServer.id, serverPrefs);
+                console.log(`Saved members panel state for server ${currentServer.id}:`, membersPanelCollapsed);
+            }
+        }
+
+        function getServerPreferences(serverId) {
+            const saved = localStorage.getItem(`server_prefs_${serverId}`);
+            return saved ? JSON.parse(saved) : { membersPanelCollapsed: false };
+        }
+
+        function saveServerPreferences(serverId, preferences) {
+            localStorage.setItem(`server_prefs_${serverId}`, JSON.stringify(preferences));
+        }
+
+        function restoreMembersPanelState(serverId) {
+            const serverPrefs = getServerPreferences(serverId);
+            membersPanelCollapsed = serverPrefs.membersPanelCollapsed;
+            console.log(`Restored members panel state for server ${serverId}:`, membersPanelCollapsed);
+            
+            const panel = document.getElementById('members-panel');
+            const toggleBtn = document.getElementById('members-toggle');
+            const chatArea = document.getElementById('chat-area');
+            
+            if (membersPanelCollapsed) {
+                panel.classList.add('collapsed');
+                toggleBtn.classList.add('collapsed');
+                chatArea.classList.add('expanded');
+            } else {
+                panel.classList.remove('collapsed');
+                toggleBtn.classList.remove('collapsed');
+                chatArea.classList.remove('expanded');
+            }
+        }
+
+        async function loadServerMembers(serverId) {
+            try {
+                const response = await fetch(`/api/servers/${serverId}/members`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayServerMembers(data.members);
+                } else {
+                    console.error('Failed to load server members');
+                }
+            } catch (error) {
+                console.error('Error loading server members:', error);
+            }
+        }
+
+        function displayServerMembers(members) {
+            const membersList = document.getElementById('members-list');
+            const membersCount = document.getElementById('members-count');
+            
+            membersList.innerHTML = '';
+            membersCount.textContent = members.length;
+
+            // Group members by role
+            const owners = members.filter(m => m.role === 'owner');
+            const admins = members.filter(m => m.role === 'admin');
+            const regularMembers = members.filter(m => m.role === 'member');
+
+            // Display owners
+            if (owners.length > 0) {
+                membersList.innerHTML += '<div style="padding: 8px 16px; color: #8e9297; font-size: 12px; font-weight: bold; text-transform: uppercase;">Owner</div>';
+                owners.forEach(member => {
+                    membersList.innerHTML += createMemberHTML(member);
+                });
+            }
+
+            // Display admins
+            if (admins.length > 0) {
+                membersList.innerHTML += '<div style="padding: 8px 16px; color: #8e9297; font-size: 12px; font-weight: bold; text-transform: uppercase;">Admins</div>';
+                admins.forEach(member => {
+                    membersList.innerHTML += createMemberHTML(member);
+                });
+            }
+
+            // Display members
+            if (regularMembers.length > 0) {
+                membersList.innerHTML += '<div style="padding: 8px 16px; color: #8e9297; font-size: 12px; font-weight: bold; text-transform: uppercase;">Members</div>';
+                regularMembers.forEach(member => {
+                    membersList.innerHTML += createMemberHTML(member);
+                });
+            }
+        }
+
+        function createMemberHTML(member) {
+            return `
+                <div class="member-item" onclick="showUserProfile(${member.userId})">
+                    <div class="member-avatar">${member.username.charAt(0).toUpperCase()}</div>
+                    <div class="member-info">
+                        <div class="member-name">${member.username}</div>
+                        <div class="member-role">${member.role}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function checkChannelManagementPermission(serverId) {
+            try {
+                const response = await fetch(`/api/servers/${serverId}/members`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const currentUserMember = data.members.find(m => m.userId === currentUser.id);
+                    
+                    // Show channel management button only for owners and admins
+                    const addChannelBtn = document.getElementById('add-channel-btn');
+                    if (currentUserMember && (currentUserMember.role === 'owner' || currentUserMember.role === 'admin')) {
+                        addChannelBtn.style.display = 'flex';
+                    } else {
+                        addChannelBtn.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking channel management permission:', error);
+                // Hide button on error
+                document.getElementById('add-channel-btn').style.display = 'none';
             }
         }
     </script>

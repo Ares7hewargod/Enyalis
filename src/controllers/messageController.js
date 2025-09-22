@@ -88,8 +88,10 @@ exports.sendMessage = (req, res) => {
             res.status(201).json(message);
         } else if (type === 'channel' && channelId) {
             // Send channel message
+            console.log('Sending channel message:', { channelId, userId, text });
             const channel = channels.find(c => c.id == channelId);
             if (!channel) {
+                console.log('Channel not found:', channelId);
                 return res.status(404).json({ error: 'Channel not found' });
             }
 
@@ -99,12 +101,13 @@ exports.sendMessage = (req, res) => {
             );
             
             if (!membership) {
+                console.log('User not member of server:', { userId, serverId: channel.serverId });
                 return res.status(403).json({ error: 'You do not have access to this channel' });
             }
             
             const message = { 
                 id: generateId(),
-                channelId: parseInt(channelId),
+                channelId: parseFloat(channelId), // Convert string to number to match stored channel IDs
                 userId,
                 username,
                 content: text || '',
@@ -114,7 +117,9 @@ exports.sendMessage = (req, res) => {
                 editedAt: null
             };
             
+            console.log('Adding message to messages array:', message);
             messages.push(message);
+            console.log('Total messages in array:', messages.length);
             
             // Broadcast to all users in the channel via WebSocket
             const io = req.app.get('io');
@@ -135,9 +140,14 @@ exports.getMessagesByChannel = (req, res) => {
         const { channelId } = req.params;
         const userId = req.userId;
         
+        console.log('Loading messages for channel:', channelId, 'by user:', userId);
+        console.log('ChannelId type:', typeof channelId, 'value:', channelId);
+        console.log('ParseFloat result:', parseFloat(channelId));
+        
         // Verify user has access to this channel
         const channel = channels.find(c => c.id == channelId);
         if (!channel) {
+            console.log('Channel not found:', channelId);
             return res.status(404).json({ error: 'Channel not found' });
         }
 
@@ -147,12 +157,17 @@ exports.getMessagesByChannel = (req, res) => {
         );
         
         if (!membership) {
+            console.log('User not member of server:', { userId, serverId: channel.serverId });
             return res.status(403).json({ error: 'You do not have access to this channel' });
         }
 
         const channelMessages = messages
-            .filter(m => m.channelId == channelId)
+            .filter(m => m.channelId === parseFloat(channelId)) // Convert URL string to number for comparison
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        console.log('Found messages for channel:', channelMessages.length);
+        console.log('All messages in system:', messages.length);
+        console.log('Messages for this channel:', channelMessages);
         
         // Ensure all messages have username info
         const messagesWithUsernames = channelMessages.map(message => {

@@ -11,6 +11,9 @@ router.post('/', serverController.createServer);
 router.post('/join', serverController.joinServer);
 router.get('/', serverController.getUserServers);
 
+// Member management
+router.get('/:serverId/members', serverController.getServerMembers);
+
 // Channel management
 router.get('/:serverId/channels', serverController.getServerChannels);
 router.post('/:serverId/channels', serverController.createChannel);
