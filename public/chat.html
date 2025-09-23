@@ -8,6 +8,24 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        /* Enyalis Brand Tokens */
+        :root {
+            /* Base surfaces and text (kept aligned with existing app palette) */
+            --bg-primary: #2f3136;
+            --bg-secondary: #36393f;
+            --bg-hover: #34373c;
+            --text-primary: #ffffff;
+            --text-secondary: #b9bbbe;
+            --border-color: #4f545c;
+
+            /* Brand gradient derived from logo (red → crimson → magenta) */
+            --brand-1: #ff3b1f;   /* fiery red/orange */
+            --brand-2: #ff2241;   /* crimson */
+            --brand-3: #ff2975;   /* magenta/pink */
+            --brand-gradient: linear-gradient(135deg, var(--brand-1), var(--brand-2) 50%, var(--brand-3));
+            --brand-glow: rgba(255, 41, 117, 0.35);
+            --brand-glow-strong: rgba(255, 41, 117, 0.55);
+        }
         /* Discord-like Layout */
         * {
             margin: 0;
@@ -54,7 +72,7 @@
         .server-icon {
             width: 48px;
             height: 48px;
-            background: #5865f2;
+            background: var(--brand-2); /* default for letter-only icons (red) */
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -64,21 +82,61 @@
             font-weight: bold;
             font-size: 18px;
             line-height: 1;
+            position: relative;
+            overflow: hidden;
         }
 
-        .server-icon:hover {
+        /* Hover color only for letter-only icons */
+        .server-icon:not(.has-image):hover {
             border-radius: 16px;
-            background: #677bc4;
+            background: var(--brand-1);
         }
 
+        /* Image-backed server icons */
+        .server-icon.has-image {
+            background-color: transparent; /* remove blue base */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background-size 0.25s ease, border-radius 0.2s ease;
+        }
+
+    /* Prevent hover blue color from affecting image */
+    .server-icon.has-image:hover { background-color: transparent; }
+
+        /* Subtle dim for unselected image icons */
+        .server-icon.has-image:not(.active) {
+            filter: grayscale(25%) saturate(0.9) brightness(0.95);
+        }
+
+        /* Active state (common) */
         .server-icon.active {
             border-radius: 16px;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
-            box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+            box-shadow: 0 0 10px var(--brand-glow);
+        }
+
+        /* Keep gradient only for letter-only icons */
+        .server-icon:not(.has-image).active {
+            background: var(--brand-gradient);
+        }
+
+        /* For image icons, animate the image itself */
+        .server-icon.has-image.active {
+            /* keep the background-image; only tweak visual treatment */
+            filter: none;
+            background-size: 110%; /* gentle zoom to indicate selection */
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 0 16px var(--brand-glow);
+        }
+
+        /* Hover animation for image icons (unselected) */
+        .server-icon.has-image:not(.active):hover {
+            background-size: 105%;
+            filter: grayscale(10%) saturate(1.05) brightness(1.06);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.05), 0 6px 14px rgba(0,0,0,0.25);
         }
 
         .server-icon.home {
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             padding: 0;
         }
 
@@ -91,7 +149,7 @@
         .server-separator {
             width: 32px;
             height: 2px;
-            background: linear-gradient(90deg, #FF69B4, #FF4500);
+            background: linear-gradient(90deg, var(--brand-1), var(--brand-3));
             border-radius: 1px;
             margin: 4px 0;
             opacity: 0.7;
@@ -229,8 +287,8 @@
         }
 
         .channel-item.active {
-            background: linear-gradient(90deg, rgba(255, 105, 180, 0.2), rgba(255, 69, 0, 0.2));
-            border-left: 3px solid #FF69B4;
+            background: linear-gradient(90deg, rgba(255, 41, 117, 0.18), rgba(255, 59, 31, 0.18));
+            border-left: 3px solid var(--brand-3);
             color: #ffffff;
         }
 
@@ -252,8 +310,8 @@
         }
 
         .dm-item.active {
-            background: linear-gradient(90deg, rgba(255, 105, 180, 0.2), rgba(255, 69, 0, 0.2));
-            border-left: 3px solid #FF69B4;
+            background: linear-gradient(90deg, rgba(255, 41, 117, 0.18), rgba(255, 59, 31, 0.18));
+            border-left: 3px solid var(--brand-3);
             color: #ffffff;
         }
 
@@ -262,7 +320,8 @@
             height: 32px;
             border-radius: 50%;
             margin-right: 12px;
-            background: linear-gradient(45deg, #7289da, #5865f2);
+            /* JS will set per-user gradient; keep a subtle fallback */
+            background: linear-gradient(45deg, #555, #444);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -292,6 +351,22 @@
             margin-top: 2px;
         }
 
+        /* Clickable links in chat messages */
+        .message-text .chat-link {
+            color: var(--brand-3);
+            text-decoration: none;
+            word-break: break-word;
+        }
+        .message-text .chat-link:hover {
+            text-decoration: underline;
+            color: #ff5a8f;
+        }
+        .message-text .chat-link:focus-visible {
+            outline: 2px solid var(--brand-3);
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
         .no-dms {
             text-align: center;
             color: #72767d;
@@ -305,8 +380,11 @@
             font-size: 16px;
         }
 
+        /* Slightly larger icon for Friends entry */
+        .channel-icon.friends { width: 24px; }
+
         .badge {
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             color: white;
             border-radius: 10px;
             padding: 2px 6px;
@@ -333,7 +411,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             margin-right: 8px;
             display: flex;
             align-items: center;
@@ -420,6 +498,31 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px 0;
+        }
+
+        /* Members panel list item styles + hover */
+        #members-list .member-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 12px;
+            margin: 2px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 120ms ease, transform 90ms ease, box-shadow 120ms ease;
+        }
+        #members-list .member-item:hover {
+            background: #34373c;
+        }
+        #members-list .member-item:hover .member-avatar {
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.35);
+        }
+        #members-list .member-item:active {
+            transform: translateY(1px);
+        }
+        #members-list .member-item:focus-visible {
+            outline: 2px solid var(--brand-3);
+            outline-offset: 2px;
         }
 
         /* Inline admins chips to reduce vertical space */
@@ -611,8 +714,13 @@
         .members-toggle-btn.collapsed {
             right: 0; /* Move to right edge when panel is hidden */
             border-radius: 4px 0 0 4px;
-            background: #5865f2;
+            background: var(--brand-gradient);
             color: white;
+            box-shadow: 0 0 10px var(--brand-glow);
+        }
+
+        .members-toggle-btn.collapsed:hover {
+            box-shadow: 0 0 14px var(--brand-glow-strong);
         }
 
         /* Arrow rotation animation */
@@ -665,7 +773,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             margin-right: 16px;
             display: flex;
             align-items: center;
@@ -752,7 +860,8 @@
             left: 0;
             right: 0;
             z-index: 10;
-            border-top: 1px solid #40444b;
+            /* Remove separator line to avoid side lines extending past the rounded input */
+            border-top: none;
         }
 
         .message-input-container {
@@ -761,6 +870,8 @@
             padding: 12px;
             display: flex;
             align-items: center;
+            width: 100%;
+            cursor: text; /* indicate click-to-type anywhere */
         }
 
         .message-input {
@@ -796,6 +907,12 @@
             color: #dcddde;
             background: #4f545c;
         }
+
+        /* SVG icon helpers */
+        .icon-20 { width: 20px; height: 20px; display: block; }
+        .icon-24 { width: 24px; height: 24px; display: block; }
+        .action-btn img { transition: transform 0.15s ease; }
+        .action-btn:hover img { transform: scale(1.05); }
 
         /* Modals */
         .modal {
@@ -877,15 +994,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             color: white;
             border: none;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #FF1493, #FF6347);
+            background: linear-gradient(135deg, var(--brand-1), var(--brand-3));
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(255, 105, 180, 0.3);
+            box-shadow: 0 2px 8px var(--brand-glow);
         }
 
         .btn-secondary {
@@ -950,7 +1067,7 @@
         }
 
         .server-tab-btn.active {
-            color: #FF69B4;
+            color: var(--brand-3);
         }
 
         .server-tab-btn.active::after {
@@ -960,7 +1077,7 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             border-radius: 1px;
         }
 
@@ -1037,8 +1154,8 @@
         }
 
         .welcome-message.dm-welcome {
-            background: linear-gradient(135deg, rgba(255, 105, 180, 0.1), rgba(255, 69, 0, 0.1));
-            border: 1px solid rgba(255, 105, 180, 0.2);
+            background: linear-gradient(135deg, rgba(255, 41, 117, 0.10), rgba(255, 59, 31, 0.10));
+            border: 1px solid rgba(255, 41, 117, 0.25);
             border-radius: 8px;
             padding: 20px;
             margin: 20px auto;
@@ -1046,7 +1163,7 @@
         }
 
         .welcome-message.dm-welcome h3 {
-            color: #FF69B4;
+            color: var(--brand-3);
             margin-bottom: 10px;
         }
 
@@ -1086,7 +1203,7 @@
         }
 
         .search-bar:focus {
-            border-color: #FF69B4;
+            border-color: var(--brand-3);
             outline: none;
         }
 
@@ -1125,7 +1242,7 @@
         }
 
         .add-friend-btn {
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             border: none;
             color: white;
             padding: 8px 16px;
@@ -1135,7 +1252,8 @@
         }
 
         .add-friend-btn:hover {
-            background: linear-gradient(135deg, #FF1493, #FF6347);
+            background: linear-gradient(135deg, var(--brand-1), var(--brand-3));
+            box-shadow: 0 6px 18px var(--brand-glow);
         }
 
         /* Friends Main Area Styles */
@@ -1146,6 +1264,7 @@
             padding: 40px;
             background: var(--bg-primary);
             align-items: center;
+            justify-content: center; /* center vertically */
             position: absolute;
             top: 0;
             left: 0;
@@ -1164,6 +1283,7 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
+            margin: 0 auto; /* center horizontally */
         }
 
         .friends-container::before {
@@ -1173,7 +1293,7 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
         }
 
         .friends-header-main {
@@ -1188,7 +1308,7 @@
             margin: 0;
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1232,9 +1352,9 @@
         }
 
         .friends-nav-btn-main.active {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             color: white;
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 4px 12px var(--brand-glow);
         }
 
         .friends-nav-btn-main.active::before {
@@ -1247,7 +1367,28 @@
             height: 0;
             border-left: 6px solid transparent;
             border-right: 6px solid transparent;
-            border-top: 6px solid #ff6b6b;
+            border-top: 6px solid var(--brand-2);
+        }
+
+        /* Pending Requests badge + flashing */
+        .pending-count-badge {
+            background: var(--brand-gradient);
+            color: #fff;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+            box-shadow: 0 2px 6px var(--brand-glow);
+            display: none; /* hidden when 0 */
+        }
+        @keyframes flash-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .friends-nav-btn-main.has-pending .label {
+            animation: flash-text 1s linear infinite;
+            text-shadow: 0 0 8px var(--brand-glow);
+            color: var(--text-primary);
         }
 
         .friends-content-main {
@@ -1284,8 +1425,8 @@
 
         .username-search-input:focus {
             outline: none;
-            border-color: #ff6b6b;
-            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2);
+            border-color: var(--brand-2);
+            box-shadow: 0 0 0 3px var(--brand-glow);
             transform: translateY(-1px);
         }
 
@@ -1324,14 +1465,14 @@
         .user-result-card:hover {
             background: var(--bg-hover);
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            border-color: #ff6b6b;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--brand-glow);
+            border-color: var(--brand-2);
         }
 
         .user-result-avatar {
             width: 50px;
             height: 50px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1340,7 +1481,7 @@
             font-weight: 700;
             font-size: 18px;
             margin-right: 16px;
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 4px 12px var(--brand-glow);
             line-height: 1;
         }
 
@@ -1366,7 +1507,7 @@
         }
 
         .quick-add-btn {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             color: white;
             border: none;
             width: 40px;
@@ -1379,30 +1520,31 @@
             font-size: 20px;
             font-weight: 700;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 4px 12px var(--brand-glow);
             line-height: 1;
         }
 
         .quick-add-btn:hover {
             transform: scale(1.15);
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+            box-shadow: 0 6px 20px var(--brand-glow-strong);
         }
 
         /* Friends Grid */
         .friends-grid, .pending-requests-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
         }
 
         .friend-card {
             background: var(--bg-primary);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            transition: background 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         .friend-card::before {
@@ -1412,7 +1554,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -1421,7 +1563,7 @@
             background: var(--bg-hover);
             transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            border-color: #ff6b6b;
+            border-color: var(--brand-2);
         }
 
         .friend-card:hover::before {
@@ -1431,22 +1573,25 @@
         .friend-card-header {
             display: flex;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
+            gap: 10px;
         }
+        /* Ensure inline Message button sits at the far right */
+        .friend-card-header .friend-action-btn { margin-left: auto; }
 
         .friend-card-avatar {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            width: 40px;
+            height: 40px;
+            background: var(--brand-gradient);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: 700;
-            font-size: 22px;
-            margin-right: 16px;
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+            font-size: 16px;
+            margin-right: 0;
+            box-shadow: 0 4px 12px var(--brand-glow);
             line-height: 1;
         }
 
@@ -1457,53 +1602,48 @@
         .friend-card-username {
             color: var(--text-primary);
             font-weight: 700;
-            font-size: 18px;
-            margin-bottom: 6px;
+            font-size: 15px;
+            margin-bottom: 2px;
         }
 
         .friend-card-status {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .friend-card-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 16px;
-            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 8px;
         }
 
         .friend-action-btn {
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-            border: 2px solid var(--border-color);
-            padding: 8px 16px;
+            background: var(--brand-gradient);
+            color: #fff;
+            border: none;
+            padding: 6px 10px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            flex: 1;
-            min-width: 80px;
-            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            transition: transform 0.12s ease, box-shadow 0.2s ease;
+            min-width: 0;
+            line-height: 1.1;
+            box-shadow: 0 2px 8px var(--brand-glow);
         }
 
-        .friend-action-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
+        .friend-action-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--brand-glow-strong); }
 
         .friend-action-btn.primary {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            background: var(--brand-gradient);
             color: white;
             border-color: transparent;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 2px 8px var(--brand-glow);
         }
 
         .friend-action-btn.primary:hover {
-            background: linear-gradient(135deg, #ee5a52, #dd4b4b);
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+            background: linear-gradient(135deg, var(--brand-1), var(--brand-3));
+            box-shadow: 0 4px 12px var(--brand-glow-strong);
         }
 
         .friend-action-btn.danger {
@@ -1524,14 +1664,19 @@
             padding: 0;
             border-radius: 8px;
             width: 500px;
+            max-height: 88vh; /* allow tall content but keep within viewport */
+            display: flex;
+            flex-direction: column;
             color: white;
             overflow: hidden;
         }
 
         .profile-header {
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
-            height: 120px;
+            background: var(--brand-gradient);
+            height: 160px;
             position: relative;
+            background-size: cover;
+            background-position: center;
         }
 
         .profile-avatar {
@@ -1541,7 +1686,7 @@
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1551,8 +1696,67 @@
         }
 
         .profile-content {
-            padding: 50px 20px 20px;
+            padding: 56px 20px 0; /* bottom padding handled by actions footer */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1 1 auto; /* fill remaining space under header */
+            min-height: 0; /* ensures child scroll works in flex container */
+            overflow-y: auto; /* scroll content only */
         }
+        /* Sticky footer actions inside profile content */
+        .user-profile-modal .modal-actions {
+            position: sticky;
+            bottom: 0;
+            background: #36393f;
+            border-top: 1px solid #202225;
+            padding: 12px 20px;
+            margin: 10px -20px 0; /* full-bleed footer inside padded content */
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .profile-bio { color:#b9bbbe; margin: 6px 0 10px; white-space: pre-wrap; }
+        .profile-servers { margin-top: 10px; }
+        .profile-servers h4 { margin: 8px 0; font-size: 14px; color:#b9bbbe; }
+        .profile-server-list { display:flex; gap:8px; flex-wrap: wrap; }
+        .profile-server-chip { display:flex; align-items:center; gap:6px; background:#2f3136; border:1px solid #202225; border-radius:16px; padding:4px 8px; font-size:12px; color:#dcddde; }
+        .profile-server-icon { width:18px; height:18px; border-radius:50%; background: var(--brand-2); background-size: cover; background-position: center; display:inline-block; font-weight:700; text-align:center; line-height:18px; color:white; }
+
+    /* Mini Profile (lightweight profile peek) */
+    .mini-profile.modal-content { width: 360px; max-width: 90vw; }
+    .mini-profile-body { display: flex; flex-direction: column; gap: 10px; }
+    .mini-profile-header { display: flex; align-items: center; gap: 12px; }
+    .mini-profile-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--brand-gradient); display:flex; align-items:center; justify-content:center; font-weight:700; font-size: 24px; color:white; }
+    .mini-profile-name { font-size: 18px; font-weight: 700; color: #fff; }
+    .mini-profile-roles { margin-top: 6px; display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+    .mini-profile-roles > * { vertical-align: middle; }
+    .roles-label { font-size: 12px; color: #8e9297; text-transform: uppercase; margin-bottom: 6px; }
+    .roles-inline-label { font-size: 12px; color: #8e9297; text-transform: uppercase; margin: 0; line-height: 1.6; }
+    .role-chip-list { display: flex; gap: 6px; flex-wrap: wrap; }
+    .role-chip-list.inline { display:flex; gap:6px; flex-wrap: wrap; }
+    .mini-profile-roles .role-chip-list { flex: 1 1 auto; min-width: 0; }
+    .roles-inline-label { flex: 0 0 auto; }
+    .role-chip { display: inline-flex; align-items: center; gap: 6px; background: #2f3136; border: 1px solid #202225; border-radius: 12px; padding: 2px 8px; font-size: 12px; color: #dcddde; }
+    .role-dot { width: 8px; height: 8px; border-radius: 50%; background: #5865f2; display: inline-block; }
+    .profile-section-separator { height: 1px; background: var(--border-color); margin: 8px 0; border: none; }
+    .bio-label { font-size: 12px; color: #8e9297; text-transform: uppercase; margin-bottom: 6px; }
+
+    /* Floating Profile Popover (no overlay) */
+    .profile-popover { position: fixed; z-index: 2600; background: #36393f; border: 1px solid #202225; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); width: 360px; max-width: 92vw; overflow: hidden; }
+    .profile-popover .profile-header { height: 110px; }
+    .profile-popover .profile-avatar { width: 64px; height: 64px; bottom: -32px; left: 16px; border-width: 4px; font-size: 24px; }
+    .profile-popover .profile-content { padding: 44px 14px 14px; }
+    .profile-popover .profile-servers h4 { font-size: 12px; }
+    .profile-popover .profile-server-icon { width: 16px; height: 16px; line-height: 16px; font-size: 10px; }
+    /* Smaller role chips inside popover and single-line scroll */
+    .profile-popover .mini-profile-roles { flex-wrap: nowrap; }
+    .profile-popover .role-chip-list.inline { overflow-x: auto; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+    .profile-popover .role-chip { padding: 1px 6px; font-size: 11px; }
+    .profile-popover .role-dot { width: 6px; height: 6px; }
+    .profile-popover .role-chip-list.inline::-webkit-scrollbar { height: 6px; }
+    .profile-popover .role-chip-list.inline::-webkit-scrollbar-track { background: transparent; }
+    .profile-popover .role-chip-list.inline::-webkit-scrollbar-thumb { background: #202225; border-radius: 3px; }
 
         .profile-username {
             font-size: 20px;
@@ -1597,7 +1801,7 @@
             width: 96px;
             height: 96px;
             border-radius: 50%;
-            background: #5865f2;
+            background: var(--brand-2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1612,6 +1816,18 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         .settings-server-icon:hover::after {
+            content: 'Change';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        /* Account Settings avatar hover overlay (attach to the avatar itself for perfect fit) */
+        .user-avatar.changeable-avatar { position: relative; overflow: hidden; }
+        .user-avatar.changeable-avatar:hover::after {
             content: 'Change';
             position: absolute;
             inset: 0;
@@ -1653,6 +1869,24 @@
             box-shadow: inset 3px 0 0 #5865f2; /* left accent bar for active */
             font-weight: 600;
         }
+        /* Delete tab as red text only, no border/background even when active */
+        .settings-nav-btn.danger-link { color: #ff4d4f; border-color: transparent !important; }
+        .settings-nav-btn.danger-link:hover { background: transparent; color: #ff6b6b; text-shadow: 0 0 8px rgba(255,77,79,0.3); }
+        .settings-nav-btn.danger-link.active { background: transparent !important; box-shadow: none !important; color: #ff4d4f !important; border-color: transparent !important; }
+        /* Danger button style */
+        .btn-danger { background: #e03131; color: #fff; border: none; }
+        .btn-danger:hover { background: #c92a2a; box-shadow: 0 2px 10px rgba(224,49,49,0.35); }
+        /* Delete tab warning styles */
+        .danger-panel { background: rgba(224,49,49,0.08); border: 1px solid rgba(224,49,49,0.35); padding: 16px; border-radius: 8px; }
+        .danger-panel h3 { color: #ff6b6b; margin-bottom: 8px; }
+        .danger-panel p { color: #ff8787; }
+        /* Pop animation for removing server icons */
+        @keyframes pop-out {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.8; filter: saturate(1.2) drop-shadow(0 0 8px var(--brand-glow)); }
+            100% { transform: scale(0.6); opacity: 0; }
+        }
+        .pop-out { animation: pop-out 240ms ease forwards; }
         .settings-content {
             flex: 1 1 90%; /* approx 90% content area */
             padding: 8px 0 8px 0; /* reduce internal padding */
@@ -1752,7 +1986,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #FF69B4, #FF4500);
+            background: var(--brand-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1881,7 +2115,9 @@
             <div class="server-header" id="server-header">
                 <span id="current-server-name" onclick="showServerMenu()" style="cursor: pointer; flex: 1;">Direct Messages</span>
                 <div style="margin-left: auto; display: flex; gap: 8px;">
-                    <button id="invite-btn" class="action-btn" onclick="showInviteModal()" style="display: none;" title="Invite People">👥</button>
+                    <button id="invite-btn" class="action-btn" onclick="showInviteModal()" style="display: none;" title="Invite People">
+                        <img src="assets/icons/invite.svg" alt="Invite" class="icon-20" />
+                    </button>
                 </div>
             </div>
             
@@ -1891,7 +2127,7 @@
                     <div class="channel-category">Friends</div>
                     <ul class="channel-list" id="dm-list">
                         <li class="channel-item" onclick="showFriendsMain()" data-view="friends">
-                            <span class="channel-icon">👥</span>
+                            <span class="channel-icon friends"><img src="assets/icons/friends.svg" alt="Friends" class="icon-24" /></span>
                             Friends
                         </li>
                     </ul>
@@ -1920,6 +2156,9 @@
                         <div class="user-status">Online</div>
                     </div>
                 </div>
+                <button class="action-btn" id="account-settings-btn" title="User Settings" onclick="openAccountSettings()" style="margin-left:auto;">
+                    <img src="assets/icons/gear.svg" alt="Settings" class="icon-20" />
+                </button>
             </div>
         </div>
 
@@ -1948,7 +2187,9 @@
                     <input type="file" class="file-input" id="image-input" accept="image/*" multiple>
                     <input type="text" class="message-input" id="message-input" placeholder="Message...">
                     <div class="message-actions">
-                        <button class="action-btn" onclick="document.getElementById('image-input').click()">📎</button>
+                        <button class="action-btn" onclick="document.getElementById('image-input').click()" title="Attach file(s)">
+                            <img src="assets/icons/attach.svg" alt="Attach" class="icon-20" />
+                        </button>
                         <button class="action-btn" id="send-btn" onclick="sendMessage()">➤</button>
                     </div>
                 </div>
@@ -1969,8 +2210,9 @@
                         <button class="friends-nav-btn-main" onclick="switchFriendsTab('add')">
                             Add Friends
                         </button>
-                        <button class="friends-nav-btn-main" onclick="switchFriendsTab('pending')">
-                            Pending Requests
+                        <button class="friends-nav-btn-main" id="friends-tab-pending-btn" onclick="switchFriendsTab('pending')">
+                            <span class="label">Pending Requests</span>
+                            <span class="pending-count-badge" id="pending-count-badge">0</span>
                         </button>
                     </div>
                     
@@ -2030,6 +2272,54 @@
     <!-- Image Modal -->
     <div id="image-modal" class="image-modal" onclick="closeImageModal()">
         <img id="modal-image" src="" alt="">
+    </div>
+
+    <!-- Profile Popover (no overlay) -->
+    <div id="profile-popover" class="profile-popover" style="display:none;">
+        <div class="user-profile-modal" style="margin:0; width:auto;">
+            <div class="profile-header" id="popover-profile-header">
+                <div class="profile-avatar" id="popover-profile-avatar"></div>
+            </div>
+            <div class="profile-content">
+                <div class="profile-username" id="popover-profile-username"></div>
+                <div class="mini-profile-roles" id="popover-roles" style="display:none;">
+                    <span class="roles-inline-label">Roles</span>
+                    <div class="role-chip-list inline" id="popover-role-list"></div>
+                </div>
+                <hr class="profile-section-separator" id="popover-roles-sep" style="display:none;" />
+                <div id="popover-bio-wrap" style="display:none;">
+                    <div class="bio-label">Bio</div>
+                    <div class="profile-bio" id="popover-profile-bio"></div>
+                </div>
+                <div class="profile-servers" id="popover-profile-servers" style="display:none;">
+                    <h4>Servers</h4>
+                    <div class="profile-server-list" id="popover-profile-server-list"></div>
+                </div>
+                <div class="modal-actions" style="justify-content:flex-end; gap:8px;">
+                    <button type="button" class="btn btn-primary" onclick="openFullProfileFromPopover()">Open Full</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Mini Profile Modal -->
+    <div id="mini-profile-modal" class="modal">
+        <div class="modal-content mini-profile">
+            <div class="modal-header">Profile</div>
+            <div class="mini-profile-body">
+                <div class="mini-profile-header">
+                    <div class="mini-profile-avatar" id="mini-profile-avatar"></div>
+                    <div class="mini-profile-name" id="mini-profile-username"></div>
+                </div>
+                <div class="mini-profile-roles">
+                    <div class="roles-label">Roles</div>
+                    <div class="role-chip-list" id="mini-profile-roles"></div>
+                </div>
+                <div class="modal-actions" style="justify-content: space-between;">
+                    <button type="button" class="btn btn-secondary" onclick="closeMiniProfile()">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="openFullProfileFromMini()">View Full Profile</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Unified Server Modal -->
@@ -2190,15 +2480,20 @@
     <!-- User Profile Modal -->
     <div id="user-profile-modal" class="modal">
         <div class="user-profile-modal">
-            <div class="profile-header">
+            <div class="profile-header" id="profile-header">
                 <div class="profile-avatar" id="profile-avatar"></div>
             </div>
             <div class="profile-content">
                 <div class="profile-username" id="profile-username"></div>
                 <div class="profile-email" id="profile-email"></div>
-                <div class="modal-actions">
+                <div class="profile-bio" id="profile-bio" style="display:none;"></div>
+                <div class="profile-servers" id="profile-servers" style="display:none;">
+                    <h4>Servers</h4>
+                    <div class="profile-server-list" id="profile-server-list"></div>
+                </div>
+                <div class="modal-actions" id="profile-modal-actions">
                     <button type="button" class="btn btn-primary" id="profile-add-friend-btn" onclick="sendFriendRequestToProfile()">Add Friend</button>
-                    <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                    <button type="button" class="btn btn-secondary" id="profile-close-btn" onclick="hideUserProfile()">Close</button>
                 </div>
             </div>
         </div>
@@ -2224,24 +2519,26 @@
                         <button class="settings-nav-btn" data-tab="roles" onclick="switchServerSettingsTab('roles')">Roles</button>
                         <button class="settings-nav-btn" data-tab="kick" onclick="switchServerSettingsTab('kick')">Kick</button>
                         <button class="settings-nav-btn" data-tab="admins" onclick="switchServerSettingsTab('admins')">Admins</button>
+                        <div style="height:8px;"></div>
+                        <button class="settings-nav-btn danger-link" data-tab="delete" onclick="switchServerSettingsTab('delete')">Delete Server</button>
                     </nav>
                 </aside>
                 <section class="settings-content">
                     <!-- General Settings Tab -->
                     <div id="general-tab" class="tab-content active">
-                        <form onsubmit="updateServerSettings(event)">
+                        <form onsubmit="updateServerSettings(event)" style="max-width:520px; margin: 12px auto 0;">
                             <div class="form-group">
-                                <label class="form-label">Server Name</label>
+                                <label class="form-label">Name</label>
                                 <input type="text" class="form-input" id="edit-server-name" placeholder="Server Name" required>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Description</label>
-                                <textarea class="form-input" id="edit-server-description" placeholder="What's your server about?" rows="3"></textarea>
+                                <textarea class="form-input" id="edit-server-description" placeholder="Tell people about your server" rows="3" maxlength="190"></textarea>
                             </div>
                             <div class="form-group">
-                                        <!-- Server image handled by clicking the icon above -->
+                                <!-- Server image handled by clicking the icon above -->
                             </div>
-                            <div class="modal-actions">
+                            <div class="modal-actions" style="justify-content:flex-end;">
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
@@ -2313,7 +2610,102 @@
                         </div>
                         <p id="admins-permission-note" style="color: #b9bbbe; font-size: 12px; margin-top: 8px;"></p>
                     </div>
+
+                    <!-- Delete Server Tab -->
+                    <div id="delete-tab" class="tab-content">
+                        <div class="danger-panel">
+                            <h3>Danger Zone</h3>
+                            <p>Deleting a server is permanent. This will remove the server, its channels, messages, roles, and kick all members. This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-actions" style="justify-content: space-between; margin-top: 16px;">
+                            <div style="color:#ff8787; font-size:12px;" id="delete-owner-note">Only the server owner can delete this server.</div>
+                            <button type="button" id="delete-server-open-btn" class="btn btn-danger" onclick="openDeleteServerConfirm()">Delete Server</button>
+                        </div>
+                    </div>
                 </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Settings Modal -->
+    <div id="account-settings-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="width: 760px; max-width: 96vw; height: 80vh; max-height: 90vh; display:flex; flex-direction:column;">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
+                <span>Account Settings</span>
+                <button class="btn btn-secondary" onclick="closeAccountSettings()">Close</button>
+            </div>
+            <div style="display:flex; gap:16px; flex:1; min-height:0;">
+                <div style="flex: 0 0 240px; border-right: 1px solid var(--border-color); padding-right: 12px; overflow:auto;">
+                    <div style="color:#b9bbbe; font-size:12px; margin-bottom:6px;">USER SETTINGS</div>
+                    <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('profile')">Profile</button>
+                    <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('voice')">Voice & Audio</button>
+                </div>
+                <div id="account-settings-content" style="flex:1; overflow:auto; padding-right: 4px;">
+                    <div id="account-section-profile">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:8px;">
+                            <div id="account-avatar-preview" class="user-avatar changeable-avatar" style="width:96px; height:96px; font-size:34px; cursor:pointer;" title="Click to change avatar" onclick="triggerAccountAvatarPick()">A</div>
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="clearAccountAvatar()">Remove</button>
+                                <input id="account-avatar-file" type="file" accept="image/*" style="display:none;" />
+                            </div>
+                            <div style="margin-top:8px; width:100%; max-width:520px;">
+                                <label class="form-label">Profile Banner (image or GIF)</label>
+                                <div id="account-banner-preview" style="height:120px; border-radius:8px; background:linear-gradient(90deg,#5865F2,#FF2241); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:#ffffff88; cursor:pointer;" title="Click to change banner" onclick="triggerAccountBannerPick()">Click to set banner</div>
+                                <div style="display:flex; gap:8px; margin-top:6px;">
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="clearAccountBanner()">Remove Banner</button>
+                                    <input id="account-banner-file" type="file" accept="image/*" style="display:none;" />
+                                </div>
+                            </div>
+                        </div>
+                        <form onsubmit="return saveAccountProfile(event)" style="margin-top:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+                            <div class="form-group">
+                                <label class="form-label">Name</label>
+                                <input id="account-username-input" class="form-input" placeholder="Your name" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bio</label>
+                                <textarea id="account-bio-input" class="form-input" rows="3" maxlength="190" placeholder="Tell people a bit about you (max 190 chars)"></textarea>
+                            </div>
+                            <div class="modal-actions" style="justify-content:flex-end;">
+                                <button type="button" class="btn btn-secondary" onclick="closeAccountSettings()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div id="account-section-voice" style="display:none;">
+                        <h3 style="margin: 4px 0 12px 0;">Voice & Audio</h3>
+                        <p style="color:#b9bbbe;">Coming soon. Configure microphone, input/output devices, and push-to-talk here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Server: Step 1 Confirm Modal -->
+    <div id="delete-server-confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">Delete Server</div>
+            <div style="color:#dcddde; line-height:1.5;">
+                You are about to delete <strong id="del-modal-server-name-1"></strong>. This action cannot be undone.
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="cancelDeleteServerFlow()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="proceedDeleteServerVerify()">I understand</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Server: Step 2 Verify Modal -->
+    <div id="delete-server-verify-modal" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">Type to Confirm</div>
+            <div style="color:#dcddde; line-height:1.5; margin-bottom:12px;">
+                Please type the server name <strong id="del-modal-server-name-2"></strong> to confirm deletion.
+            </div>
+            <input id="delete-server-name-input" class="form-input" placeholder="Server name" />
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="cancelDeleteServerFlow()">Cancel</button>
+                <button type="button" id="confirm-delete-server-btn" class="btn btn-danger" disabled onclick="performDeleteServer()">Delete</button>
             </div>
         </div>
     </div>
@@ -2331,6 +2723,10 @@
         let currentView = 'welcome';
         let currentProfileUser = null;
     let currentDMUser = null;
+        // Track last observed server-deleted event to reconcile DELETE responses
+    let lastDeletedServerEvent = { id: null, at: 0 };
+    // Track a locally-initiated delete to suppress duplicate socket toasts/UI
+    let pendingLocalServerDelete = { id: null, at: 0 };
     // Cache of current server members for quick role lookup: userId -> { role, roleId }
     let currentServerMembersMap = new Map();
     // Track which server the members cache belongs to
@@ -2485,7 +2881,20 @@
 
             // Update UI with current user info
             document.getElementById('current-username').textContent = currentUser.username;
-            document.getElementById('user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            const userAvatarElInit = document.getElementById('user-avatar');
+            if (userAvatarElInit) {
+                if (currentUser.avatar) {
+                    userAvatarElInit.style.backgroundImage = `url(${currentUser.avatar})`;
+                    userAvatarElInit.style.backgroundSize = 'cover';
+                    userAvatarElInit.style.backgroundPosition = 'center';
+                    userAvatarElInit.style.backgroundRepeat = 'no-repeat';
+                    userAvatarElInit.style.backgroundColor = 'transparent';
+                    userAvatarElInit.textContent = '';
+                } else {
+                    userAvatarElInit.style.backgroundImage = '';
+                    userAvatarElInit.textContent = currentUser.username.charAt(0).toUpperCase();
+                }
+            }
             
             // Initialize Socket.IO and load data
             initializeSocket();
@@ -2493,6 +2902,8 @@
             // Initialize with friends view
             showFriendsMain();
             loadDMConversations();
+            // Initialize pending requests badge once at startup
+            updatePendingRequestsBadge().catch(() => {});
             
             // Check for invite code in URL and show preview modal
             const urlParams = new URLSearchParams(window.location.search);
@@ -2510,6 +2921,17 @@
                     sendMessage();
                 }
             });
+            // Click anywhere on the container to focus the text input
+            const msgContainer = document.querySelector('.message-input-container');
+            const msgInput = document.getElementById('message-input');
+            if (msgContainer && msgInput) {
+                msgContainer.addEventListener('click', (e) => {
+                    // Avoid stealing focus from buttons if they were the exact target
+                    const tag = e.target.tagName.toLowerCase();
+                    if (tag === 'button' || tag === 'img' || tag === 'input') return;
+                    msgInput.focus();
+                });
+            }
             
             // Set up image input change listener
             document.getElementById('image-input').addEventListener('change', handleImageSelection);
@@ -2549,7 +2971,7 @@
                 console.log('Friend request received:', data);
                 showNotification(data.message, 'success');
                 // Update friend requests badge and reload pending requests if on friends page
-                loadFriendRequests();
+                updatePendingRequestsBadge();
                 if (currentView === 'friends') {
                     loadPendingRequestsMain();
                 }
@@ -2642,6 +3064,104 @@
                     console.error('Error handling server-member-updated event:', e);
                 }
             });
+            // Listen for server deletion event
+            socket.on('server-deleted', (data) => {
+                try {
+                    const deletedId = parseFloat(data.serverId);
+                    const deletedName = data.serverName || 'Server';
+                    // Record the event for DELETE reconciliation
+                    lastDeletedServerEvent = { id: deletedId, at: Date.now() };
+                    const isLocal = pendingLocalServerDelete.id === deletedId && (Date.now() - pendingLocalServerDelete.at) < 3000;
+                    if (isLocal) {
+                        // Clear the pending flag and avoid duplicate UI/toast; ensure modals/settings closed
+                        pendingLocalServerDelete = { id: null, at: 0 };
+                        if (typeof cancelDeleteServerFlow === 'function') cancelDeleteServerFlow();
+                        const settingsModal = document.getElementById('server-settings-modal');
+                        if (settingsModal) hideServerSettings();
+                        return; // UI was already updated locally
+                    }
+                    // If currently viewing it, redirect to Home/Friends and close settings
+                    if (currentServer && parseFloat(currentServer.id) === deletedId) {
+                        if (socket && currentChannel && currentChannel.id) {
+                            socket.emit('leave-channel', currentChannel.id);
+                        }
+                        selectHome();
+                        const settingsModal = document.getElementById('server-settings-modal');
+                        if (settingsModal) hideServerSettings();
+                        // Also ensure any custom delete modals are closed
+                        if (typeof cancelDeleteServerFlow === 'function') {
+                            cancelDeleteServerFlow();
+                        }
+                    }
+                    // Animate and remove the server icon from sidebar
+                    const icon = document.querySelector(`.server-icon[data-server-id="${deletedId}"]`);
+                    if (icon) {
+                        icon.classList.add('pop-out');
+                        setTimeout(() => { icon.remove(); }, 240);
+                    }
+                    // Remove from local list
+                    userServers = userServers.filter(s => parseFloat(s.id) !== deletedId);
+                    showNotification(`"${deletedName}" was deleted`, 'error');
+                } catch (e) {
+                    console.error('Error handling server-deleted event:', e);
+                }
+            });
+            // Server metadata/icon updates
+            socket.on('server-updated', (data) => {
+                try {
+                    const sid = parseFloat(data.id);
+                    // Update in userServers array
+                    userServers = userServers.map(s => parseFloat(s.id) === sid ? { ...s, name: data.name, description: data.description, icon: data.icon } : s);
+                    // Update sidebar icon instantly with cache-busting (only for non-data URLs)
+                    const iconEl = document.querySelector(`.server-icon[data-server-id="${sid}"]`);
+                    if (iconEl) {
+                        if (data.icon) {
+                            const isData = typeof data.icon === 'string' && data.icon.startsWith('data:image');
+                            const url = isData ? data.icon : `${data.icon}${data.icon.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                            iconEl.classList.add('has-image');
+                            iconEl.style.backgroundImage = `url(${url})`;
+                            iconEl.style.backgroundSize = 'cover';
+                            iconEl.style.backgroundPosition = 'center';
+                            iconEl.style.backgroundRepeat = 'no-repeat';
+                            iconEl.textContent = '';
+                        } else {
+                            iconEl.classList.remove('has-image');
+                            iconEl.style.backgroundImage = '';
+                            iconEl.textContent = (data.name || 'S').charAt(0).toUpperCase();
+                        }
+                        iconEl.title = data.name;
+                    }
+                    // If currently selected server
+                    if (currentServer && parseFloat(currentServer.id) === sid) {
+                        currentServer.name = data.name;
+                        currentServer.description = data.description;
+                        currentServer.icon = data.icon || null;
+                        // Update header
+                        document.getElementById('current-server-name').textContent = data.name;
+                        // Update settings preview icon if modal open
+                        const settingsIcon = document.getElementById('server-settings-icon');
+                        if (settingsIcon) {
+                            settingsIcon.dataset.previewDataUrl = '';
+                            if (currentServer.icon) {
+                                const isData2 = typeof currentServer.icon === 'string' && currentServer.icon.startsWith('data:image');
+                                const url = isData2 ? currentServer.icon : `${currentServer.icon}${currentServer.icon.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                                settingsIcon.style.backgroundImage = `url(${url})`;
+                                settingsIcon.style.backgroundSize = 'cover';
+                                settingsIcon.style.backgroundPosition = 'center';
+                                settingsIcon.style.backgroundRepeat = 'no-repeat';
+                                settingsIcon.style.backgroundColor = 'transparent';
+                                settingsIcon.textContent = '';
+                            } else {
+                                settingsIcon.style.backgroundImage = '';
+                                settingsIcon.style.background = 'var(--brand-2)';
+                                settingsIcon.textContent = (currentServer.name || 'S').charAt(0).toUpperCase();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error handling server-updated event:', e);
+                }
+            });
             // Listen for direct messages
             socket.on('new-direct-message', async (message) => {
                 console.log('Received new DM:', message);
@@ -2655,8 +3175,14 @@
                     
                     // Update DM list if sender is not current user
                     if (message.senderId !== parseInt(localStorage.getItem('userId'))) {
-                        const sender = { id: message.senderId, username: message.username };
-                        addToDMList(sender);
+                        const sender = { id: message.senderId, username: message.username, avatar: message.avatar || null };
+                        if (dmUsers.has(sender.id)) {
+                            const prev = dmUsers.get(sender.id);
+                            dmUsers.set(sender.id, { ...prev, username: sender.username, avatar: sender.avatar ?? prev.avatar });
+                            updateDMList();
+                        } else {
+                            addToDMList(sender);
+                        }
                     }
                     
                     // Update direct messages cache and refresh DM list
@@ -2676,11 +3202,145 @@
                     
                     // Add sender to DM list if not current user
                     if (message.senderId !== parseInt(localStorage.getItem('userId'))) {
-                        const sender = { id: message.senderId, username: message.username };
-                        addToDMList(sender);
+                        const sender = { id: message.senderId, username: message.username, avatar: message.avatar || null };
+                        if (dmUsers.has(sender.id)) {
+                            const prev = dmUsers.get(sender.id);
+                            dmUsers.set(sender.id, { ...prev, username: sender.username, avatar: sender.avatar ?? prev.avatar });
+                            updateDMList();
+                        } else {
+                            addToDMList(sender);
+                        }
                     }
                 }
             });
+
+            // Real-time profile updates (username/avatar/bio)
+            socket.on('user-updated', async (data) => {
+                try {
+                    const { id, username, avatar } = data || {};
+                    if (!id) return;
+                    const uid = parseInt(id);
+                    const isSelf = currentUser && parseInt(currentUser.id) === uid;
+
+                    // Update DM cache and list
+                    if (dmUsers && dmUsers.has(uid)) {
+                        const existing = dmUsers.get(uid);
+                        dmUsers.set(uid, { ...existing, username: username ?? existing.username, avatar: typeof avatar !== 'undefined' ? avatar : existing.avatar });
+                        updateDMList();
+                    }
+
+                    // If currently in a DM with this user, update header and local object
+                    if (currentView === 'dm' && currentDMUser && parseInt(currentDMUser.id) === uid) {
+                        currentDMUser.username = username ?? currentDMUser.username;
+                        currentDMUser.avatar = typeof avatar !== 'undefined' ? avatar : currentDMUser.avatar;
+                        document.getElementById('current-server-name').textContent = `Direct Message with ${currentDMUser.username}`;
+                        document.getElementById('current-channel-name').textContent = currentDMUser.username;
+                        // Ensure the DM item label updates (covered by updateDMList above as well)
+                        updateDMList();
+                    }
+
+                    // Do not retroactively update avatars in already-rendered messages to preserve history
+                    // Names elsewhere (DM headers, lists) are updated above; existing message bubbles remain unchanged
+
+                    // If we're inside a server view, refresh members panel and settings if needed
+                    if (currentServer) {
+                        const sid = parseFloat(currentServer.id);
+                        await loadServerMembersCache(sid);
+                        await loadServerMembers(sid);
+                        // If settings modal open on members-related tabs, refresh
+                        const settingsModal = document.getElementById('server-settings-modal');
+                        if (settingsModal && settingsModal.style.display === 'block') {
+                            const activeTabBtn = document.querySelector('.settings-nav-btn.active');
+                            const activeTab = activeTabBtn ? activeTabBtn.getAttribute('data-tab') : null;
+                            if (activeTab === 'members') {
+                                loadServerMembersForSettings();
+                            } else if (activeTab === 'admins') {
+                                loadAdminsManagement();
+                            } else if (activeTab === 'kick') {
+                                loadKickableMembers();
+                            }
+                        }
+                    }
+
+                    // If Friends main is visible, refresh relevant tabs
+                    const friendsArea = document.getElementById('friends-main-area');
+                    if (friendsArea && friendsArea.style.display !== 'none') {
+                        // Detect active friends tab
+                        const activeFriendsTab = document.querySelector('.friends-tab-main.active');
+                        if (activeFriendsTab) {
+                            const idAttr = activeFriendsTab.id || '';
+                            if (idAttr.includes('current-friends')) {
+                                loadCurrentFriends();
+                            } else if (idAttr.includes('pending-requests')) {
+                                loadPendingRequestsMain();
+                            }
+                        }
+                    }
+
+                    // If this is self, also update bottom-left current user display just in case
+                    if (isSelf && currentUser) {
+                        if (typeof username === 'string' && username.trim()) currentUser.username = username.trim();
+                        currentUser.avatar = typeof avatar !== 'undefined' ? avatar : currentUser.avatar;
+                        const userNameEl = document.getElementById('current-user-name');
+                        if (userNameEl) userNameEl.textContent = currentUser.username;
+                        const userAvatarEl = document.getElementById('current-user-avatar');
+                        if (userAvatarEl) {
+                            if (currentUser.avatar) {
+                                userAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
+                                userAvatarEl.style.backgroundSize = 'cover';
+                                userAvatarEl.style.backgroundPosition = 'center';
+                                userAvatarEl.style.backgroundRepeat = 'no-repeat';
+                                userAvatarEl.textContent = '';
+                            } else {
+                                userAvatarEl.style.backgroundImage = '';
+                                userAvatarEl.textContent = (currentUser.username || 'A').charAt(0).toUpperCase();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error handling user-updated event:', e);
+                }
+            });
+        }
+
+        // Update avatars and names in already-rendered messages for a specific user
+        function updateMessageAvatarsForUser(userId, newUsername, newAvatar) {
+            try {
+                const container = document.getElementById('messages-container');
+                if (!container) return;
+                const authors = container.querySelectorAll('.message-author');
+                authors.forEach(authorEl => {
+                    const uidAttr = authorEl.getAttribute('data-user-id');
+                    if (!uidAttr) return;
+                    if (parseInt(uidAttr) === parseInt(userId)) {
+                        // Update display name if provided
+                        if (typeof newUsername === 'string' && newUsername.trim()) {
+                            authorEl.textContent = newUsername;
+                        }
+                        // Update avatar element (sibling)
+                        const parent = authorEl.closest('.message');
+                        const avatarEl = parent ? parent.querySelector('.message-avatar') : null;
+                        if (avatarEl) {
+                            if (newAvatar) {
+                                avatarEl.classList.add('has-image');
+                                avatarEl.style.backgroundImage = `url(${newAvatar})`;
+                                avatarEl.style.backgroundSize = 'cover';
+                                avatarEl.style.backgroundPosition = 'center';
+                                avatarEl.style.backgroundRepeat = 'no-repeat';
+                                avatarEl.textContent = '';
+                            } else {
+                                avatarEl.classList.remove('has-image');
+                                avatarEl.style.backgroundImage = '';
+                                // Fallback to gradient + initial using current text
+                                const initial = (newUsername || authorEl.textContent || '?').charAt(0).toUpperCase();
+                                avatarEl.textContent = initial;
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn('Failed updating message avatars for user:', err);
+            }
         }
 
         // Load user's servers
@@ -2729,9 +3389,12 @@
                     serverIcon.style.backgroundImage = `url(${server.icon})`;
                     serverIcon.style.backgroundSize = 'cover';
                     serverIcon.style.backgroundPosition = 'center';
+                    serverIcon.style.backgroundRepeat = 'no-repeat';
+                    serverIcon.classList.add('has-image');
                     serverIcon.textContent = '';
                 } else {
                     serverIcon.style.backgroundImage = '';
+                    serverIcon.classList.remove('has-image');
                     serverIcon.textContent = server.name.charAt(0).toUpperCase();
                 }
                 
@@ -2989,14 +3652,19 @@
             let inlineAuthorColor = '#dcddde';
             try { inlineAuthorColor = getRoleColorFromCaches(authorIdForColor); } catch {}
 
+            const authorInitial = message.username ? message.username.charAt(0).toUpperCase() : '?';
+            // Use only the avatar captured at send-time; do not fall back to current profile avatar for historical messages
+            const avatarUrl = message.avatar || null;
+            const authorAvatarStyle = avatarUrl ? `style="background-image:url(${avatarUrl}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : '';
+            const authorAvatarClass = avatarUrl ? 'message-avatar has-image' : 'message-avatar';
             messageDiv.innerHTML = `
-                <div class="message-avatar">${message.username.charAt(0).toUpperCase()}</div>
+                <div class="${authorAvatarClass}" ${authorAvatarStyle}>${avatarUrl ? '' : authorInitial}</div>
                 <div class="message-content">
                     <div class="message-header">
                         <span class="message-author" data-user-id="${message.userId || message.senderId || ''}" style="color: ${inlineAuthorColor}">${message.username}</span>
                         <span class="message-timestamp">${timeAgo} at ${actualTime}</span>
                     </div>
-                    <div class="message-text">${escapeHtml(messageText)}</div>
+                    <div class="message-text">${linkifyMessageText(messageText)}</div>
                     ${message.attachments && message.attachments.length > 0 ? 
                         message.attachments.map(att => 
                             att.type === 'image' ? 
@@ -3663,7 +4331,7 @@
                     iconEl.style.backgroundSize = 'cover';
                     iconEl.style.backgroundPosition = 'center';
                 } else {
-                    iconEl.style.background = '#5865f2';
+                    iconEl.style.background = 'var(--brand-2)';
                     iconEl.style.backgroundImage = '';
                     iconEl.textContent = server.name ? server.name.charAt(0).toUpperCase() : '?';
                 }
@@ -3758,11 +4426,16 @@
             const iconEl = document.getElementById('server-settings-icon');
             iconEl.textContent = '';
             if (currentServer.icon) {
+                // Clear any inline background shorthand that could override sub-properties
+                iconEl.style.removeProperty('background');
                 iconEl.style.backgroundImage = `url(${currentServer.icon})`;
-                // keep backgroundColor as-is; don't reset shorthand which clears background-image
+                iconEl.style.backgroundSize = 'cover';
+                iconEl.style.backgroundPosition = 'center';
+                iconEl.style.backgroundRepeat = 'no-repeat';
+                iconEl.style.backgroundColor = 'transparent';
             } else {
                 iconEl.style.backgroundImage = '';
-                iconEl.style.background = '#5865f2';
+                iconEl.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--brand-2') || '#ff2241';
                 iconEl.textContent = currentServer.name ? currentServer.name.charAt(0).toUpperCase() : '?';
             }
 
@@ -3807,6 +4480,95 @@
                 loadKickableMembers();
             } else if (tab === 'admins') {
                 loadAdminsManagement();
+            } else if (tab === 'delete') {
+                const note = document.getElementById('delete-owner-note');
+                const btn = document.getElementById('delete-server-open-btn');
+                if (currentServer && currentUser && currentServer.ownerId !== currentUser.id) {
+                    if (note) note.style.display = 'block';
+                    if (btn) { btn.disabled = true; btn.title = 'Only the owner can delete the server'; }
+                } else {
+                    if (note) note.style.display = 'block';
+                    if (btn) { btn.disabled = false; btn.title = ''; }
+                }
+            }
+        }
+
+        // Delete server flow (custom modals)
+        function openDeleteServerConfirm() {
+            if (!currentServer) return;
+            if (currentUser && currentServer.ownerId !== currentUser.id) {
+                showNotification('Only the owner can delete this server', 'error');
+                return;
+            }
+            document.getElementById('del-modal-server-name-1').textContent = currentServer.name;
+            document.getElementById('delete-server-confirm-modal').style.display = 'block';
+        }
+
+        function proceedDeleteServerVerify() {
+            document.getElementById('delete-server-confirm-modal').style.display = 'none';
+            document.getElementById('del-modal-server-name-2').textContent = `"${currentServer.name}"`;
+            const input = document.getElementById('delete-server-name-input');
+            const btn = document.getElementById('confirm-delete-server-btn');
+            input.value = '';
+            btn.disabled = true;
+            input.oninput = () => { btn.disabled = input.value.trim() !== (currentServer.name || '').trim(); };
+            document.getElementById('delete-server-verify-modal').style.display = 'block';
+            input.focus();
+        }
+
+        function cancelDeleteServerFlow() {
+            document.getElementById('delete-server-confirm-modal').style.display = 'none';
+            document.getElementById('delete-server-verify-modal').style.display = 'none';
+        }
+
+        async function performDeleteServer() {
+            try {
+                // Snapshot details early in case a socket event resets currentServer mid-flight
+                if (!currentServer) {
+                    // If a recent server-deleted event already occurred, treat as handled
+                    if (lastDeletedServerEvent.id) { cancelDeleteServerFlow(); hideServerSettings(); selectHome(); return; }
+                    showNotification('No server selected to delete', 'error');
+                    return;
+                }
+                const deletingId = parseFloat(currentServer.id);
+                const deletingName = currentServer.name;
+                // Mark this delete as locally initiated to prevent duplicate socket toasts
+                pendingLocalServerDelete = { id: deletingId, at: Date.now() };
+
+                const resp = await fetch(`/api/servers/${deletingId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                let data = null;
+                try { data = await resp.json(); } catch (_) { /* empty or text body */ }
+                // Some environments send a socket event but return a non-JSON body; treat socket event as source of truth
+                if (!resp.ok) {
+                    // If we just observed a matching server-deleted event recently, treat as success
+                    const expectedId = deletingId;
+                    const recently = lastDeletedServerEvent.id === expectedId && (Date.now() - lastDeletedServerEvent.at) < 2000;
+                    if (!recently) {
+                        showNotification((data && (data.error || data.message)) || 'Failed to delete server', 'error');
+                        return;
+                    }
+                }
+                const deletedId = deletingId;
+                const deletedName = deletingName;
+                if (socket && currentChannel && currentChannel.id) {
+                    socket.emit('leave-channel', currentChannel.id);
+                }
+                const icon = document.querySelector(`.server-icon[data-server-id="${deletedId}"]`);
+                if (icon) { icon.classList.add('pop-out'); setTimeout(() => icon.remove(), 240); }
+                userServers = userServers.filter(s => parseFloat(s.id) !== deletedId);
+                displayUserServers();
+                // Ensure any modals are closed immediately
+                cancelDeleteServerFlow();
+                hideServerSettings();
+                selectHome();
+                // Show a single toast here; socket listener will suppress its own
+                showNotification(`"${deletedName}" deleted`, 'error');
+            } catch (e) {
+                console.error('Delete server error:', e);
+                showNotification('Failed to delete server', 'error');
             }
         }
 
@@ -3831,7 +4593,11 @@
                 list.innerHTML = rows.length ? rows.map(m => `
                     <div class="member-item" style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:6px;">
                         <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
-                            <div class="member-avatar" style="width:24px; height:24px; border-radius:50%; background:#7289da; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px;">${m.username[0].toUpperCase()}</div>
+                            <div class="${m.avatar ? 'member-avatar has-image' : 'member-avatar'}" ${m.avatar
+                                ? `style="background-image:url(${m.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"`
+                                : `style="background:${getUserAvatarGradient({ id: m.userId, username: m.username })}"`}>
+                                ${m.avatar ? '' : (m.username ? m.username.charAt(0).toUpperCase() : '?')}
+                            </div>
                             <span class="member-username" title="${m.username}" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:100%;">${m.username}</span>
                             <span style="color:#b9bbbe; font-size:12px; flex:0 0 auto;">(${m.role})</span>
                         </div>
@@ -3893,13 +4659,17 @@
                 list.innerHTML = rows.length ? rows.map(m => `
                     <div class="member-item" style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:6px;">
                         <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
-                            <div class="member-avatar" style="width:24px; height:24px; border-radius:50%; background:#7289da; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; flex-shrink:0;">${m.username[0].toUpperCase()}</div>
+                            <div class="${m.avatar ? 'member-avatar has-image' : 'member-avatar'}" ${m.avatar
+                                ? `style=\"background-image:url(${m.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;\"`
+                                : `style=\"background:${getUserAvatarGradient({ id: m.userId, username: m.username })}\"`}>
+                                ${m.avatar ? '' : (m.username ? m.username.charAt(0).toUpperCase() : '?')}
+                            </div>
                             <span class="member-username" title="${m.username}" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:100%;">${m.username}</span>
                             <span style="color:#b9bbbe; font-size:12px; flex:0 0 auto;">(${m.role})</span>
                         </div>
                         ${m.role === 'admin' ?
-                            `<button class="btn btn-sm btn-secondary" style="white-space:nowrap;" onclick="promoteDemoteAdmin(${m.userId}, 'member')">Demote</button>` :
-                            `<button class="btn btn-sm btn-secondary" style="white-space:nowrap;" onclick="promoteDemoteAdmin(${m.userId}, 'admin')">Promote</button>`
+                            `<button class=\"btn btn-sm btn-secondary\" style=\"white-space:nowrap;\" onclick=\"promoteDemoteAdmin(${m.userId}, 'member')\">Demote</button>` :
+                            `<button class=\"btn btn-sm btn-secondary\" style=\"white-space:nowrap;\" onclick=\"promoteDemoteAdmin(${m.userId}, 'admin')\">Promote</button>`
                         }
                     </div>
                 `).join('') : '<div>No members to manage</div>';
@@ -3982,12 +4752,17 @@
                     const sidebarIcon = document.querySelector(`.server-icon[data-server-id="${currentServer.id}"]`);
                     if (sidebarIcon) {
                         if (currentServer.icon) {
-                            sidebarIcon.style.backgroundImage = `url(${currentServer.icon})`;
+                            const isData = typeof currentServer.icon === 'string' && currentServer.icon.startsWith('data:image');
+                            const bust = isData ? currentServer.icon : `${currentServer.icon}${currentServer.icon.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                            sidebarIcon.style.backgroundImage = `url(${bust})`;
                             sidebarIcon.style.backgroundSize = 'cover';
                             sidebarIcon.style.backgroundPosition = 'center';
+                            sidebarIcon.style.backgroundRepeat = 'no-repeat';
+                            sidebarIcon.classList.add('has-image');
                             sidebarIcon.textContent = '';
                         } else {
                             sidebarIcon.style.backgroundImage = '';
+                            sidebarIcon.classList.remove('has-image');
                             sidebarIcon.textContent = currentServer.name.charAt(0).toUpperCase();
                         }
                     }
@@ -3996,11 +4771,17 @@
                     if (iconEl) {
                         iconEl.dataset.previewDataUrl = '';
                         if (currentServer.icon) {
-                            iconEl.style.backgroundImage = `url(${currentServer.icon})`;
+                            const isData2 = typeof currentServer.icon === 'string' && currentServer.icon.startsWith('data:image');
+                            const bust2 = isData2 ? currentServer.icon : `${currentServer.icon}${currentServer.icon.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                            iconEl.style.backgroundImage = `url(${bust2})`;
+                            iconEl.style.backgroundSize = 'cover';
+                            iconEl.style.backgroundPosition = 'center';
+                            iconEl.style.backgroundRepeat = 'no-repeat';
+                            iconEl.style.backgroundColor = 'transparent';
                             iconEl.textContent = '';
                         } else {
                             iconEl.style.backgroundImage = '';
-                            iconEl.style.background = '#5865f2';
+                            iconEl.style.background = 'var(--brand-2)';
                             iconEl.textContent = currentServer.name.charAt(0).toUpperCase();
                         }
                     }
@@ -4109,18 +4890,20 @@
                         ` + data.members.map(member => `
                             <div class="member-item" data-user-id="${member.userId}" data-base-role="${member.role}" data-role-id="${member.roleId ?? ''}" style="display: flex; align-items: center; padding: 4px 10px; margin-bottom: 4px; border-radius: 6px;">
                                 <div class="member-info" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-                                    <div class="member-avatar" style="
+                                    <div class="member-avatar ${member.avatar ? 'has-image' : ''}" style="
                                         width: 24px;
                                         height: 24px;
                                         border-radius: 50%;
-                                        background: ${member.role === 'owner' ? 'linear-gradient(45deg, #43b581, #4caf50)' : '#7289da'};
+                                        ${member.avatar 
+                                            ? `background-image:url(${member.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;` 
+                                            : `background: ${getUserAvatarGradient({ id: member.userId, username: member.username })}`}
                                         display: flex;
                                         align-items: center;
                                         justify-content: center;
                                         font-weight: 600;
                                         font-size: 12px;
                                         color: white;
-                                    ">${member.username[0].toUpperCase()}</div>
+                                    ">${member.avatar ? '' : member.username[0].toUpperCase()}</div>
                                     <span class="member-username" style="
                                         color: ${member.role === 'owner' ? '#43b581' : '#dcddde'};
                                         font-weight: 500;
@@ -4581,6 +5364,10 @@
             // Preview on settings icon and stash for save
             const iconEl = document.getElementById('server-settings-icon');
             iconEl.style.backgroundImage = `url(${dataUrl})`;
+            iconEl.style.backgroundSize = 'cover';
+            iconEl.style.backgroundPosition = 'center';
+            iconEl.style.backgroundRepeat = 'no-repeat';
+            iconEl.style.backgroundColor = 'transparent';
             iconEl.textContent = '';
             iconEl.dataset.previewDataUrl = dataUrl;
 
@@ -4592,6 +5379,27 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Convert URLs in message text into safe, clickable links
+        function linkifyMessageText(text) {
+            if (!text) return '';
+            // Escape first to avoid injecting HTML
+            const safe = escapeHtml(text);
+            // Regex for URLs (http/https) with basic TLD/domain/path matching
+            const urlRegex = /\bhttps?:\/\/[\w.-]+(?:\:[0-9]+)?(?:\/[\w\-._~%!$&'()*+,;=:@/?#]*)?/gi;
+            let linked = safe.replace(urlRegex, (url) => {
+                // Prevent double-escaping by using the matched, already-escaped string as text
+                const href = url;
+                return `<a class="chat-link" href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+            // Also linkify bare www. domains
+            const wwwRegex = /(^|\s)(www\.[\w.-]+(?:\:[0-9]+)?(?:\/[\w\-._~%!$&'()*+,;=:@/?#]*)?)/gi;
+            linked = linked.replace(wwwRegex, (match, pre, url) => {
+                const href = `http://${url}`;
+                return `${pre}<a class="chat-link" href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+            return linked;
         }
 
         // Show notification to user
@@ -4614,7 +5422,7 @@
                 max-width: 300px;
                 word-wrap: break-word;
                 transition: all 0.3s ease;
-                background: ${type === 'error' ? 'linear-gradient(135deg, #ff6b6b, #ee5a52)' : 'linear-gradient(135deg, #51cf66, #40c057)'};
+                background: ${type === 'error' ? 'var(--brand-gradient)' : 'linear-gradient(135deg, #51cf66, #40c057)'};
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             `;
             
@@ -4737,6 +5545,7 @@
                 setupUsernameSearch();
             } else if (tab === 'pending') {
                 loadPendingRequestsMain();
+                updatePendingRequestsBadge();
             }
         }
         
@@ -4752,24 +5561,14 @@
                 
                 if (data.friends && data.friends.length > 0) {
                     friendsGrid.innerHTML = data.friends.map(friend => `
-                        <div class="friend-card">
+                        <div class="friend-card" onclick="openUserProfile('${friend.id}', '${friend.username}', ${friend.avatar ? `\'${friend.avatar}\'` : 'null'})">
                             <div class="friend-card-header">
-                                <div class="friend-card-avatar">${friend.username.charAt(0).toUpperCase()}</div>
+                                <div class="friend-card-avatar ${friend.avatar ? 'has-image' : ''}" ${friend.avatar ? `style=\"background-image:url(${friend.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;\"` : ''}>${friend.avatar ? '' : friend.username.charAt(0).toUpperCase()}</div>
                                 <div class="friend-card-info">
                                     <div class="friend-card-username">${friend.username}</div>
                                     <div class="friend-card-status">Online</div>
                                 </div>
-                            </div>
-                            <div class="friend-card-actions">
-                                <button class="friend-action-btn primary" onclick="startDMFromFriend('${friend.id}', '${friend.username}')">
-                                    Message
-                                </button>
-                                <button class="friend-action-btn" onclick="viewFriendProfile('${friend.id}', '${friend.username}')">
-                                    Profile
-                                </button>
-                                <button class="friend-action-btn danger" onclick="removeFriendCard('${friend.id}', '${friend.username}')">
-                                    Remove
-                                </button>
+                                <button class="friend-action-btn" onclick="event.stopPropagation(); startDMFromFriend('${friend.id}', '${friend.username}')">Message</button>
                             </div>
                         </div>
                     `).join('');
@@ -4827,8 +5626,8 @@
                 }
                 
                 resultsContainer.innerHTML = users.map(user => `
-                    <div class="user-result-card" onclick="viewUserProfileDetailed('${user.id}', '${user.username}')">
-                        <div class="user-result-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-result-card" onclick="openUserProfile('${user.id}', '${user.username}', ${user.avatar ? `\'${user.avatar}\'` : 'null'})">
+                        <div class="user-result-avatar ${user.avatar ? 'has-image' : ''}" ${user.avatar ? `style="background-image:url(${user.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : ''}>${user.avatar ? '' : user.username.charAt(0).toUpperCase()}</div>
                         <div class="user-result-info">
                             <div class="user-result-username">${user.username}</div>
                             <div class="user-result-status">Click to view profile</div>
@@ -4906,6 +5705,8 @@
                 }
                 
                 const requests = await response.json();
+                // Update header badge and flash state
+                try { await updatePendingRequestsBadgeFromList(requests); } catch {}
                 console.log('Received pending requests:', requests);
                 const requestsGrid = document.getElementById('pending-requests-grid');
                 
@@ -4919,7 +5720,7 @@
                     requestsGrid.innerHTML = requests.map(request => `
                         <div class="friend-card">
                             <div class="friend-card-header">
-                                <div class="friend-card-avatar">${request.username.charAt(0).toUpperCase()}</div>
+                                <div class="friend-card-avatar ${request.avatar ? 'has-image' : ''}" ${request.avatar ? `style="background-image:url(${request.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : ''}>${request.avatar ? '' : request.username.charAt(0).toUpperCase()}</div>
                                 <div class="friend-card-info">
                                     <div class="friend-card-username">${request.username}</div>
                                     <div class="friend-card-status">Wants to be friends</div>
@@ -4947,6 +5748,35 @@
                 console.error('Error loading pending requests:', error);
             }
         }
+
+        // Update Pending Requests badge: fetch from API
+        async function updatePendingRequestsBadge() {
+            try {
+                const response = await fetch('/api/friends/requests/pending', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!response.ok) return;
+                const requests = await response.json();
+                await updatePendingRequestsBadgeFromList(requests);
+            } catch (e) { /* ignore */ }
+        }
+
+        // Update badge using a provided list (avoids double fetch when we already have data)
+        async function updatePendingRequestsBadgeFromList(requests) {
+            const btn = document.getElementById('friends-tab-pending-btn');
+            const badge = document.getElementById('pending-count-badge');
+            if (!btn || !badge) return;
+            const count = Array.isArray(requests) ? requests.length : 0;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+                btn.classList.add('has-pending');
+            } else {
+                badge.textContent = '0';
+                badge.style.display = 'none';
+                btn.classList.remove('has-pending');
+            }
+        }
         
         // Accept friend request from main UI
         async function acceptFriendRequestMain(requestId) {
@@ -4959,6 +5789,7 @@
                 if (response.ok) {
                     showNotification('Friend request accepted!');
                     loadPendingRequestsMain();
+                    updatePendingRequestsBadge();
                     if (document.getElementById('current-friends-content').classList.contains('active')) {
                         loadCurrentFriends();
                     }
@@ -4982,6 +5813,7 @@
                 if (response.ok) {
                     showNotification('Friend request declined');
                     loadPendingRequestsMain();
+                    updatePendingRequestsBadge();
                 } else {
                     showNotification('Failed to decline friend request', 'error');
                 }
@@ -4992,15 +5824,8 @@
         }
         
         // Detailed user profile view
-        function viewUserProfileDetailed(userId, username) {
-            currentProfileUser = { id: userId, username: username };
-            document.getElementById('profile-username').textContent = username;
-            document.getElementById('profile-avatar').textContent = username.charAt(0).toUpperCase();
-            
-            // Check if already friends or request exists
-            checkFriendshipStatus(userId);
-            
-            document.getElementById('user-profile-modal').style.display = 'flex';
+        function viewUserProfileDetailed(userId, username, avatar = null) {
+            openUserProfile(userId, username, avatar);
         }
         
         // Helper functions for friend cards
@@ -5082,8 +5907,8 @@
                 }
                 
                 resultsContainer.innerHTML = users.map(user => `
-                    <div class="user-search-result" onclick="openUserProfile('${user.id}', '${user.username}')">
-                        <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-search-result" onclick="openUserProfile('${user.id}', '${user.username}', ${user.avatar ? `\'${user.avatar}\'` : 'null'})">
+                        <div class="user-avatar ${user.avatar ? 'has-image' : ''}" ${user.avatar ? `style=\"background-image:url(${user.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;\"` : ''}>${user.avatar ? '' : user.username.charAt(0).toUpperCase()}</div>
                         <div class="user-info">
                             <div class="user-name">${user.username}</div>
                             <div class="user-status">Click to view profile</div>
@@ -5097,16 +5922,125 @@
             }
         }
         
-        // Open user profile modal
-        function openUserProfile(userId, username) {
-            currentProfileUser = { id: userId, username: username };
-            document.getElementById('profile-username').textContent = username;
-            document.getElementById('profile-avatar').textContent = username.charAt(0).toUpperCase();
-            
-            // Check if already friends or request exists
-            checkFriendshipStatus(userId);
-            
+        // Open user profile modal (fetches full profile incl. banner/bio/servers)
+        function openUserProfile(userId, username, avatar = null) {
+            currentProfileUser = { id: userId, username, avatar };
+            const nameEl = document.getElementById('profile-username');
+            const pfp = document.getElementById('profile-avatar');
+            const headerEl = document.getElementById('profile-header');
+            const bioEl = document.getElementById('profile-bio');
+            const serversEl = document.getElementById('profile-servers');
+            const serverListEl = document.getElementById('profile-server-list');
+            // Reset Add Friend button to a sane default before async status check
+            const addBtn = document.getElementById('profile-add-friend-btn');
+            if (addBtn) {
+                addBtn.style.display = 'inline-block';
+                addBtn.disabled = false;
+                addBtn.textContent = 'Add Friend';
+            }
+
+            // Optimistic render while fetching
+            if (nameEl) nameEl.textContent = username || '';
+            if (pfp) {
+                if (avatar) {
+                    pfp.style.backgroundImage = `url(${avatar})`;
+                    pfp.style.backgroundSize = 'cover';
+                    pfp.style.backgroundPosition = 'center';
+                    pfp.style.backgroundRepeat = 'no-repeat';
+                    pfp.textContent = '';
+                } else {
+                    pfp.style.backgroundImage = '';
+                    pfp.textContent = (username || '?').charAt(0).toUpperCase();
+                }
+            }
+            if (headerEl) headerEl.style.backgroundImage = '';
+            if (bioEl) { bioEl.textContent = ''; bioEl.style.display = 'none'; }
+            if (serversEl) { serversEl.style.display = 'none'; }
+            if (serverListEl) serverListEl.innerHTML = '';
+
             document.getElementById('user-profile-modal').style.display = 'flex';
+            // Update actions (friend/message button)
+            checkFriendshipStatus(userId);
+            // Fetch full profile
+            loadAndPopulateUserProfile(userId, username, avatar);
+        }
+
+        async function loadAndPopulateUserProfile(userId, fallbackUsername, fallbackAvatar) {
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(userId)}/profile`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (!res.ok) return;
+                const profile = await res.json();
+                // Keep a richer local copy
+                currentProfileUser = {
+                    id: profile.id ?? userId,
+                    username: profile.username ?? fallbackUsername,
+                    avatar: profile.avatar ?? fallbackAvatar,
+                    banner: profile.banner ?? null,
+                    bio: profile.bio ?? ''
+                };
+
+                const nameEl = document.getElementById('profile-username');
+                const pfp = document.getElementById('profile-avatar');
+                const headerEl = document.getElementById('profile-header');
+                const bioEl = document.getElementById('profile-bio');
+                const serversEl = document.getElementById('profile-servers');
+                const serverListEl = document.getElementById('profile-server-list');
+
+                if (nameEl) nameEl.textContent = currentProfileUser.username || '';
+                if (pfp) {
+                    if (currentProfileUser.avatar) {
+                        pfp.style.backgroundImage = `url(${currentProfileUser.avatar})`;
+                        pfp.style.backgroundSize = 'cover';
+                        pfp.style.backgroundPosition = 'center';
+                        pfp.style.backgroundRepeat = 'no-repeat';
+                        pfp.textContent = '';
+                    } else {
+                        pfp.style.backgroundImage = '';
+                        pfp.textContent = (currentProfileUser.username || '?').charAt(0).toUpperCase();
+                    }
+                }
+                if (headerEl) {
+                    if (currentProfileUser.banner) {
+                        headerEl.style.backgroundImage = `url(${currentProfileUser.banner})`;
+                        headerEl.style.backgroundSize = 'cover';
+                        headerEl.style.backgroundPosition = 'center';
+                        headerEl.style.backgroundRepeat = 'no-repeat';
+                    } else {
+                        headerEl.style.backgroundImage = '';
+                    }
+                }
+                if (bioEl) {
+                    bioEl.textContent = currentProfileUser.bio || '';
+                    bioEl.style.display = currentProfileUser.bio ? 'block' : 'none';
+                }
+                if (serverListEl) {
+                    serverListEl.innerHTML = '';
+                    const servers = Array.isArray(profile.servers) ? profile.servers : [];
+                    servers.forEach(sv => {
+                        const chip = document.createElement('div');
+                        chip.className = 'profile-server-chip';
+                        const icon = document.createElement('div');
+                        icon.className = 'profile-server-icon';
+                        if (sv.icon) {
+                            icon.style.backgroundImage = `url(${sv.icon})`;
+                        } else {
+                            icon.style.backgroundImage = '';
+                            icon.textContent = (sv.name || '?').charAt(0).toUpperCase();
+                        }
+                        const label = document.createElement('span');
+                        label.textContent = sv.name || 'Server';
+                        chip.appendChild(icon);
+                        chip.appendChild(label);
+                        serverListEl.appendChild(chip);
+                    });
+                    const serversEl = document.getElementById('profile-servers');
+                    if (serversEl) serversEl.style.display = servers.length ? 'block' : 'none';
+                }
+            } catch (e) {
+                console.error('Failed to load profile', e);
+            }
         }
         
         // Check friendship status and update profile buttons
@@ -5118,28 +6052,58 @@
                 
                 const status = await response.json();
                 const actionsDiv = document.querySelector('.profile-actions');
-                
-                if (status.areFriends) {
-                    actionsDiv.innerHTML = `
-                        <button class="profile-btn remove-friend" onclick="removeFriendFromProfile()">
-                            Remove Friend
-                        </button>
-                        <button class="profile-btn send-message" onclick="startDirectMessage()">
-                            Send Message
-                        </button>
-                    `;
-                } else if (status.pendingRequest) {
-                    actionsDiv.innerHTML = `
-                        <button class="profile-btn pending" disabled>
-                            Friend Request Pending
-                        </button>
-                    `;
+                if (actionsDiv) {
+                    // If a dedicated actions container exists, render action set (no Send Message in full profile)
+                    if (status.areFriends) {
+                        actionsDiv.innerHTML = `
+                            <button class="profile-btn remove-friend" onclick="removeFriendFromProfile()">Remove Friend</button>
+                        `;
+                    } else if (status.pendingRequest) {
+                        actionsDiv.innerHTML = `
+                            <button class="profile-btn pending" disabled>Friend Request Pending</button>
+                        `;
+                    } else {
+                        actionsDiv.innerHTML = `
+                            <button class="profile-btn add-friend" onclick="sendFriendRequestFromProfile()">Add Friend</button>
+                        `;
+                    }
                 } else {
-                    actionsDiv.innerHTML = `
-                        <button class="profile-btn add-friend" onclick="sendFriendRequestFromProfile()">
-                            Add Friend
-                        </button>
-                    `;
+                    // Fallback: render into the sticky footer actions row
+                    const footer = document.getElementById('profile-modal-actions');
+                    if (footer) {
+                        if (status.areFriends) {
+                            footer.innerHTML = `
+                                <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                                <button type="button" class="btn btn-secondary" onclick="removeFriendFromProfile()">Remove Friend</button>
+                            `;
+                        } else if (status.pendingRequest) {
+                            footer.innerHTML = `
+                                <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                                <button type="button" class="btn btn-primary" id="profile-add-friend-btn" disabled>Friend Request Pending</button>
+                            `;
+                        } else {
+                            footer.innerHTML = `
+                                <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                                <button type="button" class="btn btn-primary" id="profile-add-friend-btn" onclick="sendFriendRequestToProfile()">Add Friend</button>
+                            `;
+                        }
+                    } else {
+                        // Last resort: toggle only the Add Friend button
+                        const addBtn = document.getElementById('profile-add-friend-btn');
+                        if (addBtn) {
+                            if (status.areFriends) {
+                                addBtn.style.display = 'none';
+                            } else if (status.pendingRequest) {
+                                addBtn.style.display = 'inline-block';
+                                addBtn.disabled = true;
+                                addBtn.textContent = 'Friend Request Pending';
+                            } else {
+                                addBtn.style.display = 'inline-block';
+                                addBtn.disabled = false;
+                                addBtn.textContent = 'Add Friend';
+                            }
+                        }
+                    }
                 }
                 
             } catch (error) {
@@ -5226,10 +6190,16 @@
             addToDMList(currentProfileUser);
         }
         
-        // Close user profile modal
+        // Close user profile modal (modal button wiring)
+        function hideUserProfile() { closeUserProfile(); }
         function closeUserProfile() {
             document.getElementById('user-profile-modal').style.display = 'none';
             currentProfileUser = null;
+        }
+
+        // Modal button: send friend request
+        async function sendFriendRequestToProfile() {
+            await sendFriendRequestFromProfile();
         }
         
         // Show friends tab content
@@ -5330,6 +6300,41 @@
         // Direct Messages functionality
         let directMessages = new Map(); // userId -> messages array
         let dmUsers = new Map(); // userId -> user info
+
+        // Deterministic per-user avatar colors for DMs
+        function stringHash(input) {
+            try {
+                const str = String(input || '');
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = (hash << 5) - hash + str.charCodeAt(i);
+                    hash |= 0; // Convert to 32bit integer
+                }
+                return Math.abs(hash);
+            } catch { return 0; }
+        }
+
+        // Curated, brand-friendly gradient pairs (no yellow/green)
+        const AVATAR_GRADIENTS = [
+            ['#ff4d6d', '#f03e7e'], // vibrant pink
+            ['#ff6b6b', '#f06595'], // warm coral/pink
+            ['#e64980', '#be4bdb'], // magenta -> purple
+            ['#ae3ec9', '#7048e8'], // purple -> violet
+            ['#845ef7', '#5c7cfa'], // violet -> indigo
+            ['#4dabf7', '#228be6'], // light blue -> blue
+            ['#3bc9db', '#22b8cf'], // cyan family (avoids green/yellow)
+            ['#ffa8a8', '#ff8787'], // soft red
+            ['#fa5252', '#e03131'], // red
+            ['#ff2975', '#ff2241'], // brand magenta -> crimson
+        ];
+
+        function getUserAvatarGradient(user) {
+            const key = (user && (user.id ?? user.username)) ?? '0';
+            const hash = stringHash(key);
+            const idx = hash % AVATAR_GRADIENTS.length;
+            const [c1, c2] = AVATAR_GRADIENTS[idx];
+            return `linear-gradient(135deg, ${c1}, ${c2})`;
+        }
 
         // Load direct messages with a user
         async function loadDirectMessages(userId) {
@@ -5433,15 +6438,29 @@
             if (currentUserIds.length !== existingUserIds.length || 
                 !currentUserIds.every(id => existingUserIds.includes(id))) {
                 
-                dmList.innerHTML = Array.from(dmUsers.values()).map(user => `
-                    <div class="dm-item" onclick="openDirectMessage('${user.id}', '${user.username}')" data-user-id="${user.id}">
-                        <div class="dm-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                        <div class="dm-info">
-                            <div class="dm-username">${user.username}</div>
-                            <div class="dm-last-message">${getLastMessagePreview(user.id)}</div>
-                        </div>
-                    </div>
-                `).join('');
+                dmList.innerHTML = Array.from(dmUsers.values()).map(user => {
+                    const initial = user.username ? user.username.charAt(0).toUpperCase() : '?';
+                    if (user.avatar) {
+                        return `
+                        <div class="dm-item" onclick="openDirectMessage('${user.id}', '${user.username}')" data-user-id="${user.id}">
+                            <div class="dm-avatar has-image" style="background-image:url(${user.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"></div>
+                            <div class="dm-info">
+                                <div class="dm-username">${user.username}</div>
+                                <div class="dm-last-message">${getLastMessagePreview(user.id)}</div>
+                            </div>
+                        </div>`;
+                    } else {
+                        const bg = getUserAvatarGradient(user);
+                        return `
+                        <div class="dm-item" onclick="openDirectMessage('${user.id}', '${user.username}')" data-user-id="${user.id}">
+                            <div class="dm-avatar" style="background: ${bg}">${initial}</div>
+                            <div class="dm-info">
+                                <div class="dm-username">${user.username}</div>
+                                <div class="dm-last-message">${getLastMessagePreview(user.id)}</div>
+                            </div>
+                        </div>`;
+                    }
+                }).join('');
                 
                 // Restore highlighting after regeneration
                 setTimeout(() => ensureCorrectHighlighting(), 10);
@@ -5453,17 +6472,37 @@
                     if (messageElement) {
                         messageElement.textContent = getLastMessagePreview(userId);
                     }
+                    // Ensure avatar reflects user avatar or gradient
+                    const avatarEl = item.querySelector('.dm-avatar');
+                    const user = dmUsers.get(userId);
+                    if (avatarEl && user) {
+                        if (user.avatar) {
+                            avatarEl.classList.add('has-image');
+                            avatarEl.style.backgroundImage = `url(${user.avatar})`;
+                            avatarEl.style.backgroundSize = 'cover';
+                            avatarEl.style.backgroundPosition = 'center';
+                            avatarEl.style.backgroundRepeat = 'no-repeat';
+                            avatarEl.textContent = '';
+                        } else {
+                            avatarEl.classList.remove('has-image');
+                            avatarEl.style.backgroundImage = '';
+                            avatarEl.style.background = getUserAvatarGradient(user);
+                            const initial = user.username ? user.username.charAt(0).toUpperCase() : '?';
+                            avatarEl.textContent = initial;
+                        }
+                    }
                 });
             }
         }
         
         // Open direct message conversation
-        function openDirectMessage(userId, username) {
+    function openDirectMessage(userId, username) {
             console.log('Opening DM with:', userId, username);
             currentView = 'dm';
             currentChannel = null;
             currentServer = null;
-            currentDMUser = { id: parseInt(userId), username: username };
+            const dmUserObj = dmUsers.get(parseInt(userId));
+            currentDMUser = { id: parseInt(userId), username: username, avatar: dmUserObj?.avatar || null };
             
             // Reset chat area state to prevent DM area from inheriting expanded width
             const chatArea = document.getElementById('chat-area');
@@ -5522,7 +6561,8 @@
                     conversations.forEach(conv => {
                         dmUsers.set(conv.id, { 
                             id: conv.id, 
-                            username: conv.username 
+                            username: conv.username,
+                            avatar: conv.avatar || null
                         });
                     });
                     updateDMList();
@@ -5601,6 +6641,261 @@
             } catch (error) {
                 console.error('Error creating channel:', error);
                 alert('Failed to create channel. Please try again.');
+            }
+        }
+
+        // ===== Account Settings (Profile) =====
+        function openAccountSettings() {
+            const modal = document.getElementById('account-settings-modal');
+            const nameInput = document.getElementById('account-username-input');
+            const bioInput = document.getElementById('account-bio-input');
+            const avatarPrev = document.getElementById('account-avatar-preview');
+            const bannerPrev = document.getElementById('account-banner-preview');
+            if (nameInput && currentUser) nameInput.value = currentUser.username || '';
+            if (bioInput && currentUser) bioInput.value = currentUser.bio || '';
+            if (avatarPrev) {
+                avatarPrev.textContent = (currentUser?.username || 'A').charAt(0).toUpperCase();
+                if (currentUser?.avatar) {
+                    avatarPrev.style.backgroundImage = `url(${currentUser.avatar})`;
+                    avatarPrev.style.backgroundSize = 'cover';
+                    avatarPrev.style.backgroundPosition = 'center';
+                    avatarPrev.style.backgroundRepeat = 'no-repeat';
+                    avatarPrev.style.backgroundColor = 'transparent';
+                    // Ensure no initial letter overlays the image
+                    avatarPrev.textContent = '';
+                } else {
+                    avatarPrev.style.backgroundImage = '';
+                    avatarPrev.style.background = 'var(--brand-gradient)';
+                }
+            }
+            if (bannerPrev) {
+                if (currentUser?.banner) {
+                    bannerPrev.style.backgroundImage = `url(${currentUser.banner})`;
+                    bannerPrev.style.backgroundSize = 'cover';
+                    bannerPrev.style.backgroundPosition = 'center';
+                    bannerPrev.style.backgroundRepeat = 'no-repeat';
+                    bannerPrev.textContent = '';
+                } else {
+                    bannerPrev.style.backgroundImage = '';
+                    bannerPrev.textContent = 'Click to set banner';
+                }
+            }
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            showAccountSection('profile');
+        }
+
+        function closeAccountSettings() {
+            document.getElementById('account-settings-modal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function showAccountSection(id) {
+            const sections = ['profile','voice'];
+            sections.forEach(sec => {
+                const el = document.getElementById(`account-section-${sec}`);
+                if (el) el.style.display = (sec === id) ? 'block' : 'none';
+            });
+        }
+
+        function triggerAccountAvatarPick() {
+            const input = document.getElementById('account-avatar-file');
+            if (!input) return;
+            // Reset value so selecting the same file triggers change
+            input.value = '';
+            input.onchange = (e) => handleAccountAvatarFile(e);
+            input.click();
+        }
+
+        function triggerAccountBannerPick() {
+            const input = document.getElementById('account-banner-file');
+            if (!input) return;
+            input.value = '';
+            input.onchange = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const bannerPrev = document.getElementById('account-banner-preview');
+                    const dataUrl = ev.target.result;
+                    bannerPrev.style.backgroundImage = `url(${dataUrl})`;
+                    bannerPrev.style.backgroundSize = 'cover';
+                    bannerPrev.style.backgroundPosition = 'center';
+                    bannerPrev.style.backgroundRepeat = 'no-repeat';
+                    bannerPrev.textContent = '';
+                    bannerPrev.dataset.previewBannerUrl = dataUrl;
+                };
+                reader.readAsDataURL(file);
+                setTimeout(() => { try { input.blur(); } catch {} }, 0);
+            };
+            input.click();
+        }
+
+        function handleAccountAvatarFile(event) {
+            const input = event.target;
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Open the existing cropper
+                openIconCropper(e.target.result);
+                // Change header to reflect avatar editing
+                const cropHeaderEl = document.querySelector('#icon-cropper-modal .cropper-header');
+                const previousHeader = cropHeaderEl ? cropHeaderEl.textContent : null;
+                if (cropHeaderEl) cropHeaderEl.textContent = 'Adjust Avatar';
+                const original = applyIconCrop;
+                window.applyIconCrop = function() {
+                    // Custom crop for account avatar without touching server icon
+                    const size = 256;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+
+                    // Clip circle
+                    ctx.clearRect(0, 0, size, size);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.clip();
+
+                    // Compute image draw params mirroring cropper
+                    const vRect = cropperState.viewportEl.getBoundingClientRect();
+                    const imgEl = cropperState.imgEl;
+                    const displayedWidth = imgEl.getBoundingClientRect().width;
+                    const displayedHeight = imgEl.getBoundingClientRect().height;
+                    const scaleRatioX = size / vRect.width;
+                    const scaleRatioY = size / vRect.height;
+                    const imgLeftInViewport = (vRect.width - displayedWidth) / 2 + cropperState.pos.x;
+                    const imgTopInViewport = (vRect.height - displayedHeight) / 2 + cropperState.pos.y;
+
+                    ctx.drawImage(
+                        imgEl,
+                        imgLeftInViewport * scaleRatioX,
+                        imgTopInViewport * scaleRatioY,
+                        displayedWidth * scaleRatioX,
+                        displayedHeight * scaleRatioY
+                    );
+                    ctx.restore();
+                    const dataUrl = canvas.toDataURL('image/png');
+
+                    const avatarPrev = document.getElementById('account-avatar-preview');
+                    avatarPrev.style.backgroundImage = `url(${dataUrl})`;
+                    avatarPrev.style.backgroundSize = 'cover';
+                    avatarPrev.style.backgroundPosition = 'center';
+                    avatarPrev.style.backgroundRepeat = 'no-repeat';
+                    avatarPrev.style.backgroundColor = 'transparent';
+                    avatarPrev.textContent = '';
+                    avatarPrev.dataset.previewDataUrl = dataUrl;
+
+                    hideIconCropper();
+                    // Restore header text
+                    if (cropHeaderEl && previousHeader) cropHeaderEl.textContent = previousHeader;
+                    window.applyIconCrop = original; // restore
+                }
+            };
+            reader.readAsDataURL(file);
+            // Prevent reopening picker due to stray focus; clear or blur
+            setTimeout(() => { try { input.blur(); } catch {} }, 0);
+        }
+
+        function clearAccountAvatar() {
+            const avatarPrev = document.getElementById('account-avatar-preview');
+            if (!avatarPrev) return;
+            avatarPrev.style.backgroundImage = '';
+            avatarPrev.style.background = 'var(--brand-gradient)';
+            avatarPrev.textContent = (currentUser?.username || 'A').charAt(0).toUpperCase();
+            avatarPrev.dataset.previewDataUrl = '';
+        }
+
+        function clearAccountBanner() {
+            const bannerPrev = document.getElementById('account-banner-preview');
+            if (!bannerPrev) return;
+            bannerPrev.style.backgroundImage = '';
+            bannerPrev.textContent = 'Click to set banner';
+            bannerPrev.dataset.previewBannerUrl = '';
+        }
+
+    async function saveAccountProfile(event) {
+            event.preventDefault();
+            try {
+                const name = document.getElementById('account-username-input').value.trim();
+                const bio = document.getElementById('account-bio-input').value.trim();
+                const avatarPrev = document.getElementById('account-avatar-preview');
+                const previewDataUrl = avatarPrev?.dataset?.previewDataUrl;
+        const bannerPrev = document.getElementById('account-banner-preview');
+        const bannerDataUrl = bannerPrev?.dataset?.previewBannerUrl;
+                const body = {};
+                if (name && name !== currentUser.username) body.username = name;
+                if (typeof bio !== 'undefined' && bio !== (currentUser.bio || '')) body.bio = bio;
+                if (typeof previewDataUrl !== 'undefined') body.avatar = previewDataUrl || null;
+        if (typeof bannerDataUrl !== 'undefined') body.banner = bannerDataUrl || null;
+
+                const resp = await fetch('/api/users/me', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    showNotification(data.error || 'Failed to update profile', 'error');
+                    return false;
+                }
+                currentUser.username = data.user?.username ?? currentUser.username;
+                currentUser.avatar = data.user?.avatar ?? currentUser.avatar ?? null;
+                currentUser.bio = data.user?.bio ?? currentUser.bio ?? '';
+                currentUser.banner = data.user?.banner ?? currentUser.banner ?? null;
+                document.getElementById('current-username').textContent = currentUser.username;
+                const ua = document.getElementById('user-avatar');
+                if (ua) {
+                    if (currentUser.avatar) {
+                        ua.style.backgroundImage = `url(${currentUser.avatar})`;
+                        ua.style.backgroundSize = 'cover';
+                        ua.style.backgroundPosition = 'center';
+                        ua.style.backgroundRepeat = 'no-repeat';
+                        ua.style.backgroundColor = 'transparent';
+                        ua.textContent = '';
+                    } else {
+                        ua.style.backgroundImage = '';
+                        ua.style.background = 'var(--brand-gradient)';
+                        ua.textContent = currentUser.username.charAt(0).toUpperCase();
+                    }
+                }
+                // Update DM list cache for self (if present) and rerender
+                try {
+                    if (dmUsers.has(parseInt(currentUser.id))) {
+                        const self = dmUsers.get(parseInt(currentUser.id));
+                        self.username = currentUser.username;
+                        self.avatar = currentUser.avatar || null;
+                        dmUsers.set(parseInt(currentUser.id), self);
+                    }
+                    updateDMList();
+                } catch {}
+                // Best-effort: refresh friends grid and pending list if visible
+                try {
+                    if (document.getElementById('current-friends-content')?.classList?.contains('active')) {
+                        loadCurrentFriends();
+                    }
+                    if (document.getElementById('pending-requests-content')?.classList?.contains('active')) {
+                        loadPendingRequestsMain();
+                    }
+                } catch {}
+                // Best-effort: refresh members list in server settings if open
+                try {
+                    if (document.getElementById('server-settings-modal')?.style?.display === 'block' && currentServer) {
+                        loadServerMembersForSettings();
+                    }
+                } catch {}
+                showNotification('Profile updated');
+                closeAccountSettings();
+                return true;
+            } catch (e) {
+                console.error('saveAccountProfile error:', e);
+                showNotification('Failed to update profile', 'error');
+                return false;
             }
         }
 
@@ -5807,18 +7102,21 @@
             })();
         }
 
-        function createMemberHTML(member) {
+    function createMemberHTML(member) {
             // Try to color synchronously from caches to avoid flash
             let inlineColor = '#dcddde';
             try {
                 inlineColor = getRoleColorFromCaches(member.userId);
             } catch {}
+            const initial = member.username ? member.username.charAt(0).toUpperCase() : '?';
+            const avatarStyle = member.avatar ? `style="background-image:url(${member.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : '';
+            const avatarClass = member.avatar ? 'member-avatar has-image' : 'member-avatar';
+            const bg = !member.avatar ? getUserAvatarGradient({ id: member.userId, username: member.username }) : '';
             return `
-                <div class="member-item" data-user-id="${member.userId}" onclick="showUserProfile(${member.userId})">
-                    <div class="member-avatar">${member.username.charAt(0).toUpperCase()}</div>
+                <div class="member-item" data-user-id="${member.userId}" onclick="openProfilePopover(event, ${member.userId}, '${member.username.replace(/'/g, "&#39;")}', ${member.avatar ? `\'${member.avatar}\'` : 'null'})">
+                    <div class="${avatarClass}" ${avatarStyle} ${member.avatar ? '' : `style="background:${bg}"`}>${member.avatar ? '' : initial}</div>
                     <div class="member-info">
                         <div class="member-name" style="color: ${inlineColor}">${member.username}</div>
-                        <div class="member-role">${member.role}</div>
                     </div>
                 </div>
             `;
@@ -5828,13 +7126,279 @@
             let inlineColor = '#dcddde';
             try { inlineColor = getRoleColorFromCaches(member.userId); } catch {}
             const initial = member.username ? member.username.charAt(0).toUpperCase() : '?';
+            const avatarStyle = member.avatar ? `style="background-image:url(${member.avatar}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : '';
+            const avatarClass = member.avatar ? 'admin-avatar has-image' : 'admin-avatar';
+            const bg = !member.avatar ? getUserAvatarGradient({ id: member.userId, username: member.username }) : '';
             return `
-                <div class="admin-chip" data-user-id="${member.userId}" onclick="showUserProfile(${member.userId})" title="${member.username}">
-                    <div class="admin-avatar">${initial}</div>
+                <div class="admin-chip" data-user-id="${member.userId}" onclick="openProfilePopover(event, ${member.userId}, '${member.username.replace(/'/g, "&#39;")}', ${member.avatar ? `\'${member.avatar}\'` : 'null'})" title="${member.username}">
+                    <div class="${avatarClass}" ${avatarStyle} ${member.avatar ? '' : `style="background:${bg}"`}>${member.avatar ? '' : initial}</div>
                     <span class="admin-name" style="color: ${inlineColor}">${member.username}</span>
                 </div>
             `;
         }
+
+        function closeMiniProfile() {
+            document.getElementById('mini-profile-modal').style.display = 'none';
+        }
+
+        function openFullProfileFromMini() {
+            const name = document.getElementById('mini-profile-username')?.textContent || '';
+            const avatarStyle = document.getElementById('mini-profile-avatar')?.style?.backgroundImage || '';
+            const avatar = avatarStyle && avatarStyle.startsWith('url(') ? avatarStyle.slice(4, -1).replace(/"/g, '') : null;
+            if (window.__miniProfileUserId) openUserProfile(window.__miniProfileUserId, name, avatar);
+            closeMiniProfile();
+        }
+
+        async function openMiniProfile(userId, username, avatar = null) {
+            window.__miniProfileUserId = userId;
+            const modal = document.getElementById('mini-profile-modal');
+            const nameEl = document.getElementById('mini-profile-username');
+            const avatarEl = document.getElementById('mini-profile-avatar');
+            const rolesEl = document.getElementById('mini-profile-roles');
+
+            // Set basics
+            nameEl.textContent = username || '';
+            if (avatar) {
+                avatarEl.style.backgroundImage = `url(${avatar})`;
+                avatarEl.style.backgroundSize = 'cover';
+                avatarEl.style.backgroundPosition = 'center';
+                avatarEl.style.backgroundRepeat = 'no-repeat';
+                avatarEl.textContent = '';
+            } else {
+                avatarEl.style.backgroundImage = '';
+                avatarEl.textContent = (username || '?').charAt(0).toUpperCase();
+            }
+            rolesEl.innerHTML = '';
+
+            // Ensure caches are ready
+            try {
+                if (!currentServer || !currentServer.id) throw new Error('No server');
+                if (!currentServerMembersMap || currentServerMembersMap.size === 0 || currentServerMembersCacheServerId !== parseFloat(currentServer.id)) {
+                    await loadServerMembersCache(currentServer.id);
+                }
+                const member = currentServerMembersMap.get(parseInt(userId));
+                const rolesMap = serverRolesCache.get(parseFloat(currentServer.id)) || {};
+                // Build role chips: if a specific roleId, show that; otherwise show derived role (owner/admin/member)
+                const chips = [];
+                if (member?.roleId && rolesMap[member.roleId]) {
+                    const r = rolesMap[member.roleId];
+                    chips.push({ name: r.name || 'Role', color: r.color || '#5865f2' });
+                }
+                // Always include the base role label for clarity
+                if (member?.role) {
+                    const baseColor = member.role === 'owner' ? '#43b581' : member.role === 'admin' ? '#7289da' : '#8e9297';
+                    const pretty = member.role.charAt(0).toUpperCase() + member.role.slice(1);
+                    // Avoid duplicate if custom role name matches
+                    if (!chips.some(c => c.name.toLowerCase() === pretty.toLowerCase())) {
+                        chips.push({ name: pretty, color: baseColor });
+                    }
+                }
+                if (chips.length === 0) chips.push({ name: 'Member', color: '#8e9297' });
+                chips.forEach(c => {
+                    const chip = document.createElement('div');
+                    chip.className = 'role-chip';
+                    const dot = document.createElement('span');
+                    dot.className = 'role-dot';
+                    dot.style.background = c.color;
+                    const label = document.createElement('span');
+                    label.textContent = c.name;
+                    chip.appendChild(dot);
+                    chip.appendChild(label);
+                    rolesEl.appendChild(chip);
+                });
+            } catch (e) {
+                // Fallback single chip
+                const chip = document.createElement('div');
+                chip.className = 'role-chip';
+                chip.innerHTML = '<span class="role-dot"></span><span>Member</span>';
+                rolesEl.appendChild(chip);
+            }
+
+            modal.style.display = 'block';
+        }
+
+        function hideProfilePopover() {
+            const pop = document.getElementById('profile-popover');
+            pop.style.display = 'none';
+            window.__popoverUserId = null;
+        }
+
+        function openFullProfileFromPopover() {
+            const name = document.getElementById('popover-profile-username')?.textContent || '';
+            const avatarStyle = document.getElementById('popover-profile-avatar')?.style?.backgroundImage || '';
+            const avatar = avatarStyle && avatarStyle.startsWith('url(') ? avatarStyle.slice(4, -1).replace(/"/g, '') : null;
+            if (window.__popoverUserId) openUserProfile(window.__popoverUserId, name, avatar);
+            hideProfilePopover();
+        }
+
+        async function openProfilePopover(ev, userId, fallbackUsername, fallbackAvatar = null) {
+            ev?.stopPropagation?.();
+            window.__popoverUserId = userId;
+            const pop = document.getElementById('profile-popover');
+            const rect = ev.currentTarget.getBoundingClientRect();
+            // Position to the right of the clicked element, clamp within viewport
+            const margin = 8;
+            const width = 360; // matches CSS width
+            let top = rect.top;
+            let left = rect.right + margin;
+            if (left + width > window.innerWidth - margin) {
+                // Place to the left if no space on right
+                left = Math.max(margin, rect.left - width - margin);
+            }
+            // Clamp vertical position
+            const maxTop = window.innerHeight - 20 - 260; // approx popover height
+            top = Math.max(12, Math.min(top, maxTop));
+            pop.style.top = `${top + window.scrollY}px`;
+            pop.style.left = `${left + window.scrollX}px`;
+
+            // Clear old state and set optimistic
+            const nameEl = document.getElementById('popover-profile-username');
+            const avatarEl = document.getElementById('popover-profile-avatar');
+            const headerEl = document.getElementById('popover-profile-header');
+            const bioEl = document.getElementById('popover-profile-bio');
+            const bioWrapEl = document.getElementById('popover-bio-wrap');
+            const rolesWrapEl = document.getElementById('popover-roles');
+            const rolesSepEl = document.getElementById('popover-roles-sep');
+            const roleListEl = document.getElementById('popover-role-list');
+            const serversEl = document.getElementById('popover-profile-servers');
+            const serverListEl = document.getElementById('popover-profile-server-list');
+            if (nameEl) nameEl.textContent = fallbackUsername || '';
+            if (avatarEl) {
+                if (fallbackAvatar) {
+                    avatarEl.style.backgroundImage = `url(${fallbackAvatar})`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarEl.style.backgroundPosition = 'center';
+                    avatarEl.style.backgroundRepeat = 'no-repeat';
+                    avatarEl.textContent = '';
+                } else {
+                    avatarEl.style.backgroundImage = '';
+                    avatarEl.textContent = (fallbackUsername || '?').charAt(0).toUpperCase();
+                }
+            }
+            if (headerEl) headerEl.style.backgroundImage = '';
+            if (bioEl) { bioEl.textContent = ''; }
+            if (bioWrapEl) bioWrapEl.style.display = 'none';
+            if (rolesWrapEl) rolesWrapEl.style.display = 'none';
+            if (rolesSepEl) rolesSepEl.style.display = 'none';
+            if (roleListEl) roleListEl.innerHTML = '';
+            if (serversEl) { serversEl.style.display = 'none'; }
+            if (serverListEl) serverListEl.innerHTML = '';
+            pop.style.display = 'block';
+
+            // Before network: fill roles for the current server from caches
+            try {
+                if (currentServer && currentServer.id) {
+                    if (!currentServerMembersMap || currentServerMembersMap.size === 0 || currentServerMembersCacheServerId !== parseFloat(currentServer.id)) {
+                        await loadServerMembersCache(currentServer.id);
+                    }
+                    const member = currentServerMembersMap.get(parseInt(userId));
+                    const rolesMap = serverRolesCache.get(parseFloat(currentServer.id)) || {};
+                    const chips = [];
+                    if (member?.roleId && rolesMap[member.roleId]) {
+                        const r = rolesMap[member.roleId];
+                        chips.push({ name: r.name || 'Role', color: r.color || '#5865f2' });
+                    }
+                    if (member?.role) {
+                        const baseColor = member.role === 'owner' ? '#43b581' : member.role === 'admin' ? '#7289da' : '#8e9297';
+                        const pretty = member.role.charAt(0).toUpperCase() + member.role.slice(1);
+                        if (!chips.some(c => c.name.toLowerCase() === pretty.toLowerCase())) {
+                            chips.push({ name: pretty, color: baseColor });
+                        }
+                    }
+                    if (chips.length > 0 && rolesWrapEl && roleListEl) {
+                        roleListEl.innerHTML = '';
+                        chips.forEach(c => {
+                            const chip = document.createElement('div');
+                            chip.className = 'role-chip';
+                            const dot = document.createElement('span');
+                            dot.className = 'role-dot';
+                            dot.style.background = c.color;
+                            const label = document.createElement('span');
+                            label.textContent = c.name;
+                            chip.appendChild(dot);
+                            chip.appendChild(label);
+                            roleListEl.appendChild(chip);
+                        });
+                        rolesWrapEl.style.display = 'block';
+                        if (rolesSepEl) rolesSepEl.style.display = 'block';
+                    }
+                }
+            } catch (e) { /* ignore roles errors */ }
+
+            // Fetch full public profile (banner, bio, servers)
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(userId)}/profile`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (!res.ok) return;
+                const profile = await res.json();
+                if (nameEl) nameEl.textContent = profile.username || fallbackUsername || '';
+                if (avatarEl) {
+                    if (profile.avatar) {
+                        avatarEl.style.backgroundImage = `url(${profile.avatar})`;
+                        avatarEl.style.backgroundSize = 'cover';
+                        avatarEl.style.backgroundPosition = 'center';
+                        avatarEl.style.backgroundRepeat = 'no-repeat';
+                        avatarEl.textContent = '';
+                    } else {
+                        avatarEl.style.backgroundImage = '';
+                        avatarEl.textContent = (profile.username || fallbackUsername || '?').charAt(0).toUpperCase();
+                    }
+                }
+                if (headerEl) {
+                    if (profile.banner) {
+                        headerEl.style.backgroundImage = `url(${profile.banner})`;
+                        headerEl.style.backgroundSize = 'cover';
+                        headerEl.style.backgroundPosition = 'center';
+                        headerEl.style.backgroundRepeat = 'no-repeat';
+                    } else {
+                        headerEl.style.backgroundImage = '';
+                    }
+                }
+                if (bioEl && bioWrapEl) {
+                    bioEl.textContent = profile.bio || '';
+                    bioWrapEl.style.display = profile.bio ? 'block' : 'none';
+                }
+                if (serverListEl) {
+                    serverListEl.innerHTML = '';
+                    const servers = Array.isArray(profile.servers) ? profile.servers : [];
+                    servers.forEach(sv => {
+                        const chip = document.createElement('div');
+                        chip.className = 'profile-server-chip';
+                        const icon = document.createElement('div');
+                        icon.className = 'profile-server-icon';
+                        if (sv.icon) {
+                            icon.style.backgroundImage = `url(${sv.icon})`;
+                        } else {
+                            icon.style.backgroundImage = '';
+                            icon.textContent = (sv.name || '?').charAt(0).toUpperCase();
+                        }
+                        const label = document.createElement('span');
+                        label.textContent = sv.name || 'Server';
+                        chip.appendChild(icon);
+                        chip.appendChild(label);
+                        serverListEl.appendChild(chip);
+                    });
+                    if (serversEl) serversEl.style.display = servers.length ? 'block' : 'none';
+                }
+            } catch (e) {
+                console.error('Failed to load profile for popover', e);
+            }
+        }
+
+        // Click-away to close the profile popover
+        document.addEventListener('click', (e) => {
+            const pop = document.getElementById('profile-popover');
+            if (!pop || pop.style.display !== 'block') return;
+            const within = pop.contains(e.target);
+            // ignore clicks that originate from member/admin items that open the popover
+            const opener = e.target.closest?.('.member-item, .admin-chip');
+            if (!within && !opener) hideProfilePopover();
+        });
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideProfilePopover();
+        });
 
         async function checkChannelManagementPermission(serverId) {
             try {

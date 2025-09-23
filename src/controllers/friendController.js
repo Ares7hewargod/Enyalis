@@ -156,6 +156,7 @@ exports.getFriends = (req, res) => {
                 id: friendId,
                 username: friend ? friend.username : `User ${friendId}`,
                 email: friend ? friend.email : '',
+                avatar: friend ? (friend.avatar || null) : null,
                 status: 'online', // TODO: implement actual status
                 friendsSince: friendship.createdAt
             };
@@ -256,6 +257,7 @@ exports.getPendingRequests = (req, res) => {
                 return {
                     id: request.id,
                     username: sender ? sender.username : `User ${request.senderId}`,
+                    avatar: sender ? (sender.avatar || null) : null,
                     createdAt: request.createdAt
                 };
             });

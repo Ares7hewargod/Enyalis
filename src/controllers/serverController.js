@@ -1,4 +1,4 @@
-const { servers, channels, serverMembers, roles, generateId, generateInviteCode } = require('../models');
+const { servers, channels, messages, serverMembers, roles, generateId, generateInviteCode } = require('../models');
 const { getUserById } = require('./userController');
 
 // Helper: ensure default role exists for a server
@@ -265,6 +265,7 @@ exports.getServerMembers = (req, res) => {
                 return {
                     userId: membership.userId,
                     username: user ? user.username : `User ${membership.userId}`,
+                    avatar: user ? (user.avatar || null) : null,
                     role: membership.role,
                     roleId: membership.roleId || null,
                     joinedAt: membership.joinedAt
@@ -319,6 +320,23 @@ exports.updateServer = (req, res) => {
         }
 
         server.updatedAt = new Date();
+
+        // Emit real-time server update so all clients refresh metadata/icons
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('server-updated', {
+                    id: server.id,
+                    name: server.name,
+                    description: server.description || '',
+                    icon: server.icon || null,
+                    ownerId: server.ownerId,
+                    updatedAt: server.updatedAt
+                });
+            }
+        } catch (e) {
+            console.warn('Warning: failed to emit server-updated event:', e);
+        }
 
         res.json({
             server,
@@ -593,6 +611,79 @@ module.exports = {
         } catch (err) {
             console.error('Kick member error:', err);
             res.status(500).json({ error: 'Failed to kick member' });
+        }
+    }
+    ,
+    // Delete server (owner only)
+    deleteServer: (req, res) => {
+        try {
+            const { serverId } = req.params;
+            const userId = req.userId;
+
+            const serverIdx = servers.findIndex(s => s.id == serverId);
+            if (serverIdx === -1) return res.status(404).json({ error: 'Server not found' });
+            const server = servers[serverIdx];
+
+            if (server.ownerId !== userId) {
+                return res.status(403).json({ error: 'Only the owner can delete this server' });
+            }
+
+            // Collect affected member userIds before deletion
+            const affectedMembers = serverMembers
+                .filter(m => m.serverId == serverId)
+                .map(m => m.userId);
+
+            // Remove channels belonging to this server and their messages
+            const channelIds = channels
+                .filter(c => c.serverId == serverId)
+                .map(c => c.id);
+            // Remove channels
+            for (let i = channels.length - 1; i >= 0; i--) {
+                if (channels[i].serverId == serverId) channels.splice(i, 1);
+            }
+            // Remove messages in those channels
+            for (let i = messages.length - 1; i >= 0; i--) {
+                if (channelIds.includes(messages[i].channelId)) messages.splice(i, 1);
+            }
+
+            // Remove roles for this server
+            for (let i = roles.length - 1; i >= 0; i--) {
+                if (roles[i].serverId == serverId) roles.splice(i, 1);
+            }
+
+            // Remove server memberships
+            for (let i = serverMembers.length - 1; i >= 0; i--) {
+                if (serverMembers[i].serverId == serverId) serverMembers.splice(i, 1);
+            }
+
+            // Finally remove the server itself
+            servers.splice(serverIdx, 1);
+
+            // Emit real-time notification to all affected users
+            try {
+                const io = req.app.get('io');
+                if (io) {
+                    const payload = { serverId: parseFloat(serverId), serverName: server.name };
+                    // Notify each member in their personal room
+                    const notified = new Set();
+                    for (const uid of affectedMembers) {
+                        if (notified.has(uid)) continue;
+                        io.to(`user-${uid}`).emit('server-deleted', payload);
+                        notified.add(uid);
+                    }
+                    // Also notify the owner (in case not included above)
+                    if (!notified.has(userId)) {
+                        io.to(`user-${userId}`).emit('server-deleted', payload);
+                    }
+                }
+            } catch (notifyErr) {
+                console.warn('Warning: failed to emit server-deleted event', notifyErr);
+            }
+
+            res.json({ message: 'Server deleted successfully' });
+        } catch (err) {
+            console.error('Delete server error:', err);
+            res.status(500).json({ error: 'Failed to delete server' });
         }
     }
 };

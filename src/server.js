@@ -20,7 +20,9 @@ const serverRoutes = require('./routes/serverRoutes');
 const friendRoutes = require('./routes/friendRoutes');
 const { getUserById } = require('./controllers/userController');
 
-app.use(express.json());
+// Increase JSON/urlencoded body limits to allow data URL images for icons/avatars
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, '../public')));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
@@ -35,6 +37,16 @@ app.use('/api/servers', serverRoutes);
 app.use('/api/friends', friendRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+
+// Central error handler: return JSON for common errors (like 413)
+// Must be defined after routes/middleware
+app.use((err, req, res, next) => {
+    if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+        return res.status(413).json({ error: 'Payload too large' });
+    }
+    console.error('Unhandled error:', err);
+    res.status(err.status || 500).json({ error: 'Internal server error' });
+});
 
 // Handle invite links - redirect to chat with invite code in URL
 app.get('/invite/:inviteCode', (req, res) => {

@@ -48,8 +48,9 @@ exports.sendMessage = (req, res) => {
         const uploadedFiles = req.files || [];
         
         // Get user info
-        const user = getUserById(userId);
-        const username = user ? user.username : `User ${userId}`;
+    const user = getUserById(userId);
+    const username = user ? user.username : `User ${userId}`;
+    const userAvatar = user ? (user.avatar || null) : null;
         
         // Process attachments
         const attachments = uploadedFiles.map(file => ({
@@ -75,7 +76,8 @@ exports.sendMessage = (req, res) => {
                 text: text || '',
                 attachments,
                 createdAt: new Date(),
-                username
+                username,
+                avatar: userAvatar
             };
             
             directMessages.push(message);
@@ -116,6 +118,8 @@ exports.sendMessage = (req, res) => {
                 edited: false,
                 editedAt: null
             };
+            // Include avatar for convenience on the client
+            if (userAvatar) message.avatar = userAvatar;
             
             console.log('Adding message to messages array:', message);
             messages.push(message);
@@ -239,6 +243,7 @@ exports.getDMConversations = (req, res) => {
             return {
                 id: userId,
                 username: user ? user.username : `User ${userId}`,
+                avatar: user ? (user.avatar || null) : null,
                 lastMessage: lastMessage ? lastMessage.text : 'No messages yet',
                 lastMessageTime: lastMessage ? lastMessage.createdAt : null
             };

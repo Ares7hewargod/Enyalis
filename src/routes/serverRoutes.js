@@ -13,6 +13,7 @@ router.post('/', serverController.createServer);
 router.post('/join', serverController.joinServer);
 router.get('/', serverController.getUserServers);
 router.put('/:serverId', serverController.updateServer);
+router.delete('/:serverId', serverController.deleteServer);
 
 // Member management
 router.get('/:serverId/members', serverController.getServerMembers);
