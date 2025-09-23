@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enyalis - Chat Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+        <!-- Loader Overlay -->
+        <div id="loader-overlay">
+            <div class="loader-container">
+                <svg class="solid-ellipse-animated" width="280" height="280">
+                    <defs>
+                        <mask id="arc-mask">
+                            <rect width="280" height="280" fill="black"/>
+                            <ellipse
+                                class="arc-reveal"
+                                cx="140" cy="140" rx="125" ry="130"
+                                fill="none"
+                                stroke="white"
+                                stroke-width="260"
+                                stroke-linecap="butt"
+                            />
+                        </mask>
+                    </defs>
+                    <ellipse
+                        cx="140" cy="140" rx="125" ry="130"
+                        fill="#FFD700"
+                        mask="url(#arc-mask)"
+                        filter="drop-shadow(0 0 8px #FFD70044)"
+                    />
+                </svg>
+                <img class="meander-icon" src="logo.png" alt="Logo"/>
+            </div>
+        </div>
+
+        <div id="main-content" style="opacity:0;">
+                <div id="auth-error" class="error-banner" style="display: none;">
+                    <p id="auth-error-message"></p>
+                </div>
+                <header class="hero">
+                        <div class="logo-bg full" id="main-logo-bg">
+                                <img src="Enyalis-Full.png" alt="Enyalis Full Logo" class="logo-full" id="main-logo-full">
+                        </div>
+                        <p class="subtitle">Real-time Chat Platform</p>
+                        <div class="cta-group">
+                                <a href="register.html" class="cta secondary">Join</a>
+                                <a href="login.html" class="cta secondary">Sign In</a>
+                        </div>
+                </header>
+                <section class="features">
+                        <div class="feature">
+                                <h2>Real-time Messaging</h2>
+                                <p>Connect instantly with friends and colleagues. Create channels, send messages, and chat in real-time with WebSocket technology.</p>
+                        </div>
+                        <div class="feature">
+                                <h2>Channel-based Organization</h2>
+                                <p>Organize conversations into channels for different topics, teams, or projects. Keep everything structured and easy to find.</p>
+                        </div>
+                        <div class="feature">
+                                <h2>Open Source Backend</h2>
+                                <p>Built with Node.js and Socket.IO. All source code is available for transparency and customization.</p>
+                        </div>
+                </section>
+                <footer>
+                        <p>&copy; 2025 Enyalis Chat. A modern messaging platform.</p>
+                </footer>
+        </div>
+
+        <script>
+        // Only show loader animation on first visit per tab (sessionStorage)
+        window.addEventListener('DOMContentLoaded', function() {
+            var loader = document.getElementById('loader-overlay');
+            var mainContent = document.getElementById('main-content');
+            
+            // Check for authentication errors
+            const authError = localStorage.getItem('authError');
+            if (authError) {
+                const errorBanner = document.getElementById('auth-error');
+                const errorMessage = document.getElementById('auth-error-message');
+                errorMessage.textContent = authError;
+                errorBanner.style.display = 'block';
+                localStorage.removeItem('authError'); // Clear the error after showing it
+                
+                // Auto-hide the error after 5 seconds
+                setTimeout(function() {
+                    errorBanner.style.opacity = '0';
+                    setTimeout(function() {
+                        errorBanner.style.display = 'none';
+                        errorBanner.style.opacity = '1';
+                    }, 300);
+                }, 5000);
+            }
+            
+            if (sessionStorage.getItem('enyalis_visited')) {
+                // Skip animation, show main content immediately
+                loader.style.display = 'none';
+                mainContent.style.opacity = 1;
+            } else {
+                // Play animation, then set flag
+                setTimeout(function() {
+                    loader.style.transition = 'opacity 0.7s cubic-bezier(0.4,0,0.2,1)';
+                    loader.style.opacity = 0;
+                    setTimeout(function() {
+                        loader.style.display = 'none';
+                        mainContent.style.transition = 'opacity 0.7s cubic-bezier(0.4,0,0.2,1)';
+                        mainContent.style.opacity = 1;
+                    }, 700);
+                }, 1800);
+                sessionStorage.setItem('enyalis_visited', '1');
+            }
+        });
+        </script>
+</body>
+</html>
