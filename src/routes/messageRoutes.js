@@ -10,5 +10,7 @@ router.post('/', messageController.uploadMiddleware, messageController.sendMessa
 router.get('/channel/:channelId', messageController.getMessagesByChannel);
 router.get('/dm/:userId', messageController.getDirectMessages);
 router.get('/conversations', messageController.getDMConversations);
+router.put('/:scope/:id', messageController.editMessage); // scope: channel|dm
+router.delete('/:scope/:id', messageController.deleteMessage);
 
 module.exports = router;

@@ -1,64 +1,135 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { users, servers, serverMembers } = require('../models');
+const { users, servers, serverMembers } = require('../models'); // in-memory fallback / other collections
+const { pool, isActive, USE_DB } = require('../db');
+const { bufferNewUser } = require('../dbBuffer');
 
-exports.register = (req, res) => {
-  const { username, email, password } = req.body;
-  
-  if (users.find(u => u.username === username)) {
-    return res.status(400).json({ message: 'Username already exists' });
+exports.register = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    // Check duplicates in DB
+    let newId;
+    if (isActive()) {
+      const existing = await pool.query('SELECT 1 FROM users WHERE username=$1 OR email=$2 LIMIT 1', [username, email]);
+      if (existing.rowCount > 0) {
+        return res.status(400).json({ message: 'Username or Email already exists' });
+      }
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      const insert = await pool.query(
+        'INSERT INTO users (username, email, password) VALUES ($1,$2,$3) RETURNING id, username, email, avatar, banner, bio, status, created_at',
+        [username, email, hashedPassword]
+      );
+      const row = insert.rows[0];
+      newId = row.id;
+      users.push({
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        password: hashedPassword,
+        avatar: row.avatar,
+        banner: row.banner,
+        bio: row.bio || '',
+        status: row.status || 'online',
+        createdAt: row.created_at
+      });
+    } else {
+      // Pure in-memory fallback
+      if (users.find(u => u.username === username) || users.find(u => u.email === email)) {
+        return res.status(400).json({ message: 'Username or Email already exists' });
+      }
+      const hashedPassword = bcrypt.hashSync(password, 10);
+      newId = users.length + 1;
+      const userObj = {
+        id: newId,
+        username,
+        email,
+        password: hashedPassword,
+        createdAt: new Date(),
+        bio: '',
+        avatar: null,
+        banner: null,
+        status: 'online'
+      };
+      users.push(userObj);
+      // If DB is intended (USE_DB true) but inactive, buffer for later flush
+      if (USE_DB) {
+        bufferNewUser(userObj);
+      }
+    }
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ message: 'Registration failed' });
   }
-  
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ message: 'Email already exists' });
-  }
-  
-  const hashedPassword = bcrypt.hashSync(password, 8);
-  const user = { 
-    id: users.length + 1, 
-    username, 
-    email, 
-    password: hashedPassword,
-    createdAt: new Date(),
-    bio: '',
-    avatar: null,
-    banner: null
-  };
-  users.push(user);
-  
-  res.status(201).json({ message: 'User registered successfully' });
 };
 
-exports.login = (req, res) => {
-  const { emailOrUsername, password } = req.body;
-  
-  // Allow login with either email or username
-  const user = users.find(u => 
-    u.username === emailOrUsername || u.email === emailOrUsername
-  );
-  
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-  
-  const token = jwt.sign(
-    { id: user.id, username: user.username, email: user.email }, 
-    process.env.JWT_SECRET, 
-    { expiresIn: '24h' }
-  );
-  
-  res.json({ 
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      avatar: user.avatar || null,
-      banner: user.banner || null,
-      status: user.status || 'online',
-      bio: user.bio || ''
+exports.login = async (req, res) => {
+  try {
+    const { emailOrUsername, password } = req.body;
+    if (!emailOrUsername || !password) {
+      return res.status(400).json({ message: 'Missing credentials' });
     }
-  });
+    // Try DB first
+    if (isActive()) {
+      const dbUser = await pool.query('SELECT * FROM users WHERE username=$1 OR email=$1 LIMIT 1', [emailOrUsername]);
+      if (dbUser.rowCount === 1) {
+        const userRecord = dbUser.rows[0];
+        const valid = bcrypt.compareSync(password, userRecord.password);
+        if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
+        if (!users.find(u => u.id === userRecord.id)) {
+          users.push({
+            id: userRecord.id,
+            username: userRecord.username,
+            email: userRecord.email,
+            password: userRecord.password,
+            avatar: userRecord.avatar,
+            banner: userRecord.banner,
+            bio: userRecord.bio || '',
+            status: userRecord.status || 'online',
+            createdAt: userRecord.created_at
+          });
+        }
+        const token = jwt.sign({ id: userRecord.id, username: userRecord.username, email: userRecord.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        return res.json({
+          token,
+          user: {
+            id: userRecord.id,
+            username: userRecord.username,
+            email: userRecord.email,
+            avatar: userRecord.avatar || null,
+            banner: userRecord.banner || null,
+            status: userRecord.status || 'online',
+            bio: userRecord.bio || ''
+          }
+        });
+      }
+      return res.status(401).json({ message: 'Invalid credentials' });
+    } else {
+      const user = users.find(u => u.username === emailOrUsername || u.email === emailOrUsername);
+      if (!user || !bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      const token = jwt.sign({ id: user.id, username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
+      return res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          avatar: user.avatar || null,
+          banner: user.banner || null,
+          status: user.status || 'online',
+          bio: user.bio || ''
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Login failed' });
+  }
 };
 
 exports.getProfile = (req, res) => {
@@ -75,6 +146,36 @@ exports.getProfile = (req, res) => {
 // Helper function to get user by ID
 exports.getUserById = (userId) => {
   return users.find(u => u.id === parseInt(userId));
+};
+
+// Load all users from DB into memory (used on startup to preserve profile data across restarts)
+exports.loadAllUsersFromDb = async () => {
+  try {
+    if (!isActive()) return 0;
+    const res = await pool.query('SELECT * FROM users');
+    let added = 0;
+    res.rows.forEach(row => {
+      if (!users.find(u => u.id === row.id)) {
+        users.push({
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          password: row.password,
+          avatar: row.avatar,
+          banner: row.banner,
+          bio: row.bio || '',
+          status: row.status || 'online',
+          createdAt: row.created_at
+        });
+        added++;
+      }
+    });
+    if (added) console.log(`[DB] Loaded ${added} users from database into memory`);
+    return added;
+  } catch (err) {
+    console.warn('Failed to load users from DB:', err.code || err.message);
+    return 0;
+  }
 };
 
 // Validate user session
@@ -146,7 +247,7 @@ exports.searchUsers = (req, res) => {
 };
 
 // Update current user's profile (username, avatar, banner, bio)
-exports.updateMe = (req, res) => {
+exports.updateMe = async (req, res) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -195,15 +296,17 @@ exports.updateMe = (req, res) => {
       }
     }
 
-    // Update bio (optional, max 190 chars)
+    // Update bio (optional) — allow richer multi-line content (basic markdown) up to 1000 chars
     if (typeof bio !== 'undefined') {
-      if (bio === null) user.bio = '';
-      else if (typeof bio === 'string') {
-        const trimmedBio = bio.trim();
-        if (trimmedBio.length > 190) {
-          return res.status(400).json({ error: 'Bio must be 190 characters or less' });
+      if (bio === null) {
+        user.bio = '';
+      } else if (typeof bio === 'string') {
+        // Preserve intentional newlines and spacing inside; trim only ends
+        const sanitized = bio.replace(/\r\n?/g, '\n').trimEnd();
+        if (sanitized.length > 1000) {
+          return res.status(400).json({ error: 'Bio must be 1000 characters or less' });
         }
-        user.bio = trimmedBio;
+        user.bio = sanitized;
       }
     }
 
@@ -223,6 +326,34 @@ exports.updateMe = (req, res) => {
       }
     } catch (e) {
       console.warn('Warning: failed to emit user-updated event:', e);
+    }
+
+    // Defer DB persistence to background queue for snappy response
+    if (isActive()) {
+      try {
+        const { enqueue } = require('../persistQueue');
+        // Basic uniqueness pre-check only if username changed
+        if (typeof username === 'string') {
+          // Quick optimistic check in memory; true uniqueness still DB-enforced by UNIQUE constraint
+          const duplicate = users.find(u => u.id !== user.id && u.username.toLowerCase() === user.username.toLowerCase());
+          if (duplicate) {
+            return res.status(400).json({ error: 'Username already exists' });
+          }
+        }
+        enqueue({
+          type: 'updateUser',
+          userId: user.id,
+          fields: {
+            username: user.username,
+            avatar: user.avatar || null,
+            banner: user.banner || null,
+            bio: user.bio || '',
+            status: user.status || 'online'
+          }
+        });
+      } catch (e) {
+        console.warn('Enqueue update failed (will rely on next change):', e.message);
+      }
     }
 
     res.json({ message: 'Profile updated', user: safeUser });

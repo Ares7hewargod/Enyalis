@@ -12,6 +12,10 @@ const io = socketIo(server, {
         methods: ["GET", "POST"]
     }
 });
+// Database initialization
+const { init: initDb, pool } = require('./db');
+const { start: startPersistQueue } = require('./persistQueue');
+const { loadAllUsersFromDb } = require('./controllers/userController');
 
 const userRoutes = require('./routes/userRoutes');
 const channelRoutes = require('./routes/channelRoutes');
@@ -105,3 +109,19 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Initialize database tables after server starts then load users
+initDb()
+    .then(async () => {
+        console.log('Database initialized');
+            // Start background persistence queue
+            startPersistQueue(() => pool);
+        try {
+            const count = await loadAllUsersFromDb();
+            if (count) console.log(`Loaded ${count} users from DB into memory.`);
+        } catch (e) {
+            console.warn('Could not load users from DB:', e.message);
+        }
+    })
+    .catch(err => {
+        console.error('Database init error:', err);
+    });

@@ -1,5 +1,14 @@
 const { servers, channels, messages, serverMembers, roles, generateId, generateInviteCode } = require('../models');
 const { getUserById } = require('./userController');
+const { USE_DB: DB_ENABLED, getPool } = require('../db');
+let serverRepo, channelRepo, roleRepo;
+try {
+    serverRepo = require('../repositories/serverRepo');
+    channelRepo = require('../repositories/channelRepo');
+    roleRepo = require('../repositories/roleRepo');
+} catch (e) {
+    console.warn('Repository load failed (likely before creation) - using in-memory only', e.message);
+}
 
 // Helper: ensure default role exists for a server
 function ensureDefaultRole(serverId) {
@@ -19,15 +28,19 @@ function ensureDefaultRole(serverId) {
 }
 
 // Create a new server
-exports.createServer = (req, res) => {
+exports.createServer = async (req, res) => {
     try {
         const { name, description } = req.body;
-        const userId = req.userId; // From JWT middleware
-        
-        if (!name || name.trim().length === 0) {
-            return res.status(400).json({ error: 'Server name is required' });
+        const userId = req.userId;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Server name is required' });
+        if (DB_ENABLED && serverRepo && channelRepo && roleRepo) {
+            const server = await serverRepo.createServer({ name: name.trim(), description: description || '', ownerId: userId });
+            await serverRepo.addMember({ serverId: server.id, userId, role: 'owner' });
+            await roleRepo.ensureDefaultRole(server.id);
+            const defaultChannel = await channelRepo.createChannel({ serverId: server.id, name: 'general', type: 'text', position: 0 });
+            return res.status(201).json({ server, defaultChannel, message: 'Server created successfully' });
         }
-
+        // Fallback in-memory
         const server = {
             id: generateId(),
             name: name.trim(),
@@ -37,38 +50,13 @@ exports.createServer = (req, res) => {
             inviteCode: generateInviteCode(),
             createdAt: new Date()
         };
-
         servers.push(server);
-
-        // Add creator as server member with owner role
-        const membership = {
-            id: generateId(),
-            serverId: server.id,
-            userId: userId,
-            role: 'owner',
-            joinedAt: new Date()
-        };
+        const membership = { id: generateId(), serverId: server.id, userId, role: 'owner', joinedAt: new Date() };
         serverMembers.push(membership);
-
-        // Create default general channel
-        const defaultChannel = {
-            id: generateId(),
-            serverId: server.id,
-            name: 'general',
-            type: 'text',
-            position: 0,
-            createdAt: new Date()
-        };
-    channels.push(defaultChannel);
-
-    // Ensure default role exists
-    ensureDefaultRole(server.id);
-
-        res.status(201).json({
-            server,
-            defaultChannel,
-            message: 'Server created successfully'
-        });
+        const defaultChannel = { id: generateId(), serverId: server.id, name: 'general', type: 'text', position: 0, createdAt: new Date() };
+        channels.push(defaultChannel);
+        ensureDefaultRole(server.id);
+        res.status(201).json({ server, defaultChannel, message: 'Server created successfully (memory)' });
     } catch (error) {
         console.error('Create server error:', error);
         res.status(500).json({ error: 'Failed to create server' });
@@ -76,214 +64,137 @@ exports.createServer = (req, res) => {
 };
 
 // Join server by invite code
-exports.joinServer = (req, res) => {
-    try {
-        const { inviteCode } = req.body;
-        const userId = req.userId;
-
-        const server = servers.find(s => s.inviteCode === inviteCode.toUpperCase());
-        if (!server) {
-            return res.status(404).json({ error: 'Invalid invite code' });
-        }
-
-        // Check if user is already a member
-        const existingMembership = serverMembers.find(m => 
-            m.serverId === server.id && m.userId === userId
-        );
-
-        if (existingMembership) {
-            return res.status(400).json({ error: 'You are already a member of this server' });
-        }
-
-        // Add user as member
-        const membership = {
-            id: generateId(),
-            serverId: server.id,
-            userId: userId,
-            role: 'member',
-            joinedAt: new Date()
-        };
-        serverMembers.push(membership);
-
-        // Notify others that a member joined
-        try {
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('server-member-updated', {
-                    serverId: server.id,
-                    userId: userId,
-                    role: 'member',
-                    roleId: null,
-                    action: 'joined'
-                });
-            }
-        } catch (e) {
-            console.warn('Warning: failed to emit server-member-updated (joined):', e);
-        }
-
-        res.json({ 
-            server,
-            message: 'Successfully joined server' 
-        });
-    } catch (error) {
-        console.error('Join server error:', error);
-        res.status(500).json({ error: 'Failed to join server' });
+exports.joinServer = async (req, res) => {
+  try {
+    const { inviteCode } = req.body;
+    const userId = req.userId;
+    if (DB_ENABLED && serverRepo) {
+      const pool = getPool();
+      const { rows } = await pool.query('SELECT * FROM servers WHERE UPPER(invite_code) = UPPER($1)', [inviteCode]);
+      const server = rows[0];
+      if (!server) return res.status(404).json({ error: 'Invalid invite code' });
+      const mCheck = await pool.query('SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2', [server.id, userId]);
+      if (mCheck.rows.length) return res.status(400).json({ error: 'You are already a member of this server' });
+      await serverRepo.addMember({ serverId: server.id, userId, role: 'member' });
+      try { const io = req.app.get('io'); if (io) io.emit('server-member-updated', { serverId: server.id, userId, role: 'member', roleId: null, action: 'joined' }); } catch {}
+      return res.json({ server, message: 'Successfully joined server' });
     }
+    // Fallback memory logic
+    const server = servers.find(s => s.inviteCode === inviteCode.toUpperCase());
+    if (!server) return res.status(404).json({ error: 'Invalid invite code' });
+    const existingMembership = serverMembers.find(m => m.serverId === server.id && m.userId === userId);
+    if (existingMembership) return res.status(400).json({ error: 'You are already a member of this server' });
+    const membership = { id: generateId(), serverId: server.id, userId, role: 'member', joinedAt: new Date() };
+    serverMembers.push(membership);
+    try { const io = req.app.get('io'); if (io) io.emit('server-member-updated', { serverId: server.id, userId, role: 'member', roleId: null, action: 'joined' }); } catch {}
+    res.json({ server, message: 'Successfully joined server (memory)' });
+  } catch (error) {
+    console.error('Join server error:', error);
+    res.status(500).json({ error: 'Failed to join server' });
+  }
 };
 
 // Get user's servers
-exports.getUserServers = (req, res) => {
-    try {
-        const userId = req.userId;
-
-        const userMemberships = serverMembers.filter(m => m.userId === userId);
-        const userServers = userMemberships.map(membership => {
-            const server = servers.find(s => s.id === membership.serverId);
-            return {
-                ...server,
-                role: membership.role,
-                joinedAt: membership.joinedAt
-            };
-        });
-
-        res.json({ servers: userServers });
-    } catch (error) {
-        console.error('Get user servers error:', error);
-        res.status(500).json({ error: 'Failed to get servers' });
+exports.getUserServers = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (DB_ENABLED && serverRepo) {
+      const serversList = await serverRepo.getServersForUser(userId);
+      const mapped = serversList.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description || '',
+        icon: s.icon,
+        ownerId: s.owner_id,
+        inviteCode: s.invite_code,
+        createdAt: s.created_at,
+        role: s.role,
+        joinedAt: s.joined_at
+      }));
+      return res.json({ servers: mapped });
     }
+    const userMemberships = serverMembers.filter(m => m.userId === userId);
+    const userServers = userMemberships.map(m => ({ ...servers.find(s => s.id === m.serverId), role: m.role, joinedAt: m.joinedAt }));
+    res.json({ servers: userServers });
+  } catch (error) {
+    console.error('Get user servers error:', error);
+    res.status(500).json({ error: 'Failed to get servers' });
+  }
 };
 
 // Get server channels
-exports.getServerChannels = (req, res) => {
-    try {
-        const { serverId } = req.params;
-        const userId = req.userId;
-
-        // Check if user is a member of this server
-        const membership = serverMembers.find(m => 
-            m.serverId == serverId && m.userId === userId
-        );
-
-        if (!membership) {
-            return res.status(403).json({ error: 'You are not a member of this server' });
-        }
-
-        const serverChannels = channels
-            .filter(c => c.serverId == serverId)
-            .sort((a, b) => a.position - b.position);
-
-        res.json({ channels: serverChannels });
-    } catch (error) {
-        console.error('Get server channels error:', error);
-        res.status(500).json({ error: 'Failed to get channels' });
+exports.getServerChannels = async (req, res) => {
+  try {
+    const { serverId } = req.params; const userId = req.userId;
+    if (DB_ENABLED && channelRepo) {
+      const pool = getPool();
+      const mem = await pool.query('SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+      if (!mem.rows.length) return res.status(403).json({ error: 'You are not a member of this server' });
+      const list = await channelRepo.getChannels(serverId);
+      return res.json({ channels: list });
     }
+    const membership = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
+    if (!membership) return res.status(403).json({ error: 'You are not a member of this server' });
+    const serverChannels = channels.filter(c => c.serverId == serverId).sort((a,b)=>a.position-b.position);
+    res.json({ channels: serverChannels });
+  } catch (error) {
+    console.error('Get server channels error:', error);
+    res.status(500).json({ error: 'Failed to get channels' });
+  }
 };
 
 // Create channel in server
-exports.createChannel = (req, res) => {
-    try {
-        const { serverId } = req.params;
-        const { name, description, type = 'text' } = req.body;
-        const userId = req.userId;
-
-        console.log('Creating channel:', { serverId, name, description, userId });
-        console.log('Request userId:', userId);
-        console.log('Request params:', req.params);
-        console.log('Request body:', req.body);
-
-        // Check if user has permission (owner or admin)
-        const membership = serverMembers.find(m => 
-            m.serverId == serverId && m.userId === userId && 
-            (m.role === 'owner' || m.role === 'admin')
-        );
-
-        console.log('User membership:', membership);
-
-        if (!membership) {
-            return res.status(403).json({ error: 'You do not have permission to create channels' });
-        }
-
-        if (!name || name.trim().length === 0) {
-            return res.status(400).json({ error: 'Channel name is required' });
-        }
-
-        const maxPosition = Math.max(
-            ...channels.filter(c => c.serverId == serverId).map(c => c.position),
-            -1
-        );
-
-        const channel = {
-            id: generateId(),
-            serverId: parseFloat(serverId), // Use parseFloat to preserve decimal precision
-            name: name.trim().toLowerCase().replace(/\s+/g, '-'),
-            description: description || '',
-            type: type,
-            position: maxPosition + 1,
-            createdAt: new Date()
-        };
-
-        channels.push(channel);
-
-        res.status(201).json({
-            channel,
-            message: 'Channel created successfully'
-        });
-    } catch (error) {
-        console.error('Create channel error:', error);
-        res.status(500).json({ error: 'Failed to create channel' });
+exports.createChannel = async (req, res) => {
+  try {
+    const { serverId } = req.params;
+    const { name, description, type = 'text' } = req.body;
+    const userId = req.userId;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Channel name is required' });
+    if (DB_ENABLED) {
+      const { getPool } = require('../db');
+      const pool = getPool();
+      const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+      if (!actor.rows.length || !['owner','admin'].includes(actor.rows[0].role)) return res.status(403).json({ error: 'You do not have permission to create channels' });
+      const existing = await pool.query('SELECT 1 FROM channels WHERE server_id = $1 AND name = $2', [serverId, name.trim().toLowerCase().replace(/\s+/g,'-')]);
+      const channel = await channelRepo.createChannel({ serverId, name: name.trim().toLowerCase().replace(/\s+/g,'-'), type, topic: description || null });
+      return res.status(201).json({ channel, message: 'Channel created successfully' });
     }
+    const membership = serverMembers.find(m => m.serverId == serverId && m.userId === userId && (m.role === 'owner' || m.role === 'admin'));
+    if (!membership) return res.status(403).json({ error: 'You do not have permission to create channels' });
+    const maxPosition = Math.max(...channels.filter(c=>c.serverId==serverId).map(c=>c.position), -1);
+    const channel = { id: generateId(), serverId: parseFloat(serverId), name: name.trim().toLowerCase().replace(/\s+/g,'-'), description: description||'', type, position: maxPosition+1, createdAt: new Date() };
+    channels.push(channel);
+    res.status(201).json({ channel, message: 'Channel created successfully (memory)' });
+  } catch (error) {
+    console.error('Create channel error:', error);
+    res.status(500).json({ error: 'Failed to create channel' });
+  }
 };
 
 // Get server members
-exports.getServerMembers = (req, res) => {
+exports.getServerMembers = async (req, res) => {
     try {
         const { serverId } = req.params;
         const userId = req.userId;
-        
-        console.log('Getting members for server:', serverId, 'by user:', userId);
-        
-        // Verify server exists
+        if (DB_ENABLED && serverRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const server = await pool.query('SELECT id FROM servers WHERE id = $1', [serverId]);
+          if (!server.rows.length) return res.status(404).json({ error: 'Server not found' });
+          const userMem = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!userMem.rows.length) return res.status(403).json({ error: 'You do not have access to this server' });
+          const membersRaw = await serverRepo.getMembers(serverId);
+          const rolePriority = { owner:0, admin:1, member:2 };
+          const members = membersRaw.map(m=>({ userId: m.user_id, username: m.username, avatar: m.avatar, role: m.role, roleId: null, joinedAt: m.joined_at }))
+            .sort((a,b)=> (rolePriority[a.role]||999)-(rolePriority[b.role]||999) || a.username.localeCompare(b.username));
+          return res.json({ members });
+        }
+        // memory fallback
         const server = servers.find(s => s.id == serverId);
-        if (!server) {
-            return res.status(404).json({ error: 'Server not found' });
-        }
-        
-        // Check if user is member of the server
-        const userMembership = serverMembers.find(m => 
-            m.serverId == serverId && m.userId === userId
-        );
-        
-        if (!userMembership) {
-            return res.status(403).json({ error: 'You do not have access to this server' });
-        }
-        
-        // Get all server members with user info
-        const members = serverMembers
-            .filter(m => m.serverId == serverId)
-            .map(membership => {
-                const user = getUserById(membership.userId);
-                return {
-                    userId: membership.userId,
-                    username: user ? user.username : `User ${membership.userId}`,
-                    avatar: user ? (user.avatar || null) : null,
-                    role: membership.role,
-                    roleId: membership.roleId || null,
-                    joinedAt: membership.joinedAt
-                };
-            })
-            .sort((a, b) => {
-                // Sort by role priority: owner > admin > member
-                const rolePriority = { owner: 0, admin: 1, member: 2 };
-                const aPriority = rolePriority[a.role] || 999;
-                const bPriority = rolePriority[b.role] || 999;
-                if (aPriority !== bPriority) {
-                    return aPriority - bPriority;
-                }
-                // Then sort by username
-                return a.username.localeCompare(b.username);
-            });
-        
-        console.log('Found members:', members.length);
+        if (!server) return res.status(404).json({ error: 'Server not found' });
+        const userMembership = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
+        if (!userMembership) return res.status(403).json({ error: 'You do not have access to this server' });
+        const members = serverMembers.filter(m=>m.serverId==serverId).map(m=>{ const user = getUserById(m.userId); return { userId: m.userId, username: user?user.username:`User ${m.userId}`, avatar: user?(user.avatar||null):null, role: m.role, roleId: m.roleId||null, joinedAt: m.joinedAt }; }).sort((a,b)=>{ const rp={owner:0,admin:1,member:2}; const ap=rp[a.role]||999; const bp=rp[b.role]||999; return ap!==bp?ap-bp:a.username.localeCompare(b.username); });
         res.json({ members });
     } catch (error) {
         console.error('Get server members error:', error);
@@ -292,56 +203,32 @@ exports.getServerMembers = (req, res) => {
 };
 
 // Update server settings (owner only)
-exports.updateServer = (req, res) => {
+exports.updateServer = async (req, res) => {
     try {
         const { serverId } = req.params;
         const { name, description, icon } = req.body;
         const userId = req.userId;
-
+        if (DB_ENABLED && serverRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const { rows } = await pool.query('SELECT * FROM servers WHERE id = $1', [serverId]);
+          if (!rows.length) return res.status(404).json({ error: 'Server not found' });
+          const server = rows[0];
+          if (server.owner_id !== userId) return res.status(403).json({ error: 'Only server owners can update server settings' });
+          const updated = await serverRepo.updateServer(serverId, { name: name?name.trim():undefined, description: description?description.trim():undefined, icon });
+          updated.updatedAt = new Date();
+          try { const io = req.app.get('io'); if (io) io.emit('server-updated', { id: updated.id, name: updated.name, description: updated.description||'', icon: updated.icon||null, ownerId: updated.owner_id, updatedAt: updated.updatedAt }); } catch {}
+          return res.json({ server: { id: updated.id, name: updated.name, description: updated.description, icon: updated.icon, ownerId: updated.owner_id, updatedAt: updated.updatedAt }, message: 'Server updated successfully' });
+        }
         const server = servers.find(s => s.id == serverId);
-        if (!server) {
-            return res.status(404).json({ error: 'Server not found' });
-        }
-
-        // Check if user is the server owner
-        if (server.ownerId !== userId) {
-            return res.status(403).json({ error: 'Only server owners can update server settings' });
-        }
-
-        // Update server properties
-        if (name !== undefined && name.trim()) {
-            server.name = name.trim();
-        }
-        if (description !== undefined) {
-            server.description = description.trim();
-        }
-        if (icon !== undefined) {
-            server.icon = icon;
-        }
-
+        if (!server) return res.status(404).json({ error: 'Server not found' });
+        if (server.ownerId !== userId) return res.status(403).json({ error: 'Only server owners can update server settings' });
+        if (name && name.trim()) server.name = name.trim();
+        if (description !== undefined) server.description = description.trim();
+        if (icon !== undefined) server.icon = icon;
         server.updatedAt = new Date();
-
-        // Emit real-time server update so all clients refresh metadata/icons
-        try {
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('server-updated', {
-                    id: server.id,
-                    name: server.name,
-                    description: server.description || '',
-                    icon: server.icon || null,
-                    ownerId: server.ownerId,
-                    updatedAt: server.updatedAt
-                });
-            }
-        } catch (e) {
-            console.warn('Warning: failed to emit server-updated event:', e);
-        }
-
-        res.json({
-            server,
-            message: 'Server updated successfully'
-        });
+        try { const io = req.app.get('io'); if (io) io.emit('server-updated', { id: server.id, name: server.name, description: server.description||'', icon: server.icon||null, ownerId: server.ownerId, updatedAt: server.updatedAt }); } catch {}
+        res.json({ server, message: 'Server updated successfully (memory)' });
     } catch (error) {
         console.error('Update server error:', error);
         res.status(500).json({ error: 'Failed to update server' });
@@ -349,23 +236,23 @@ exports.updateServer = (req, res) => {
 };
 
 // Get server roles
-exports.getServerRoles = (req, res) => {
+exports.getServerRoles = async (req, res) => {
     try {
         const { serverId } = req.params;
         const userId = req.userId;
-
-        // Check if user is a member of this server
-        const membership = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
-        if (!membership) {
-            return res.status(403).json({ error: 'You are not a member of this server' });
+        if (DB_ENABLED && roleRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const membership = await pool.query('SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!membership.rows.length) return res.status(403).json({ error: 'You are not a member of this server' });
+          await roleRepo.ensureDefaultRole(serverId);
+          const list = await roleRepo.listRoles(serverId);
+          return res.json({ roles: list });
         }
-
-        // Ensure default exists
+        const membership = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
+        if (!membership) return res.status(403).json({ error: 'You are not a member of this server' });
         ensureDefaultRole(parseFloat(serverId));
-
-        const serverRoles = roles
-            .filter(r => r.serverId == serverId)
-            .sort((a, b) => a.position - b.position);
+        const serverRoles = roles.filter(r=>r.serverId==serverId).sort((a,b)=>a.position-b.position);
         res.json({ roles: serverRoles });
     } catch (error) {
         console.error('Get server roles error:', error);
@@ -374,38 +261,26 @@ exports.getServerRoles = (req, res) => {
 };
 
 // Create new role (owner/admin only)
-exports.createRole = (req, res) => {
+exports.createRole = async (req, res) => {
     try {
         const { serverId } = req.params;
         const { name, color = '#5865f2', permissions = [] } = req.body;
         const userId = req.userId;
-
-        if (!name || !name.trim()) {
-            return res.status(400).json({ error: 'Role name is required' });
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Role name is required' });
+        if (DB_ENABLED && roleRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!actor.rows.length || !['owner','admin'].includes(actor.rows[0].role)) return res.status(403).json({ error: 'You do not have permission to create roles' });
+          const role = await roleRepo.createRole(serverId, { name: name.trim(), color, permissions: Array.isArray(permissions)?permissions:[] });
+          return res.status(201).json({ role, message: 'Role created successfully' });
         }
-
         const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
-        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
-            return res.status(403).json({ error: 'You do not have permission to create roles' });
-        }
-
-        const maxPosition = Math.max(
-            ...roles.filter(r => r.serverId == serverId).map(r => r.position),
-            0
-        );
-
-        const role = {
-            id: generateId(),
-            serverId: parseFloat(serverId),
-            name: name.trim(),
-            color,
-            permissions: Array.isArray(permissions) ? permissions : [],
-            position: maxPosition + 1,
-            isDefault: false,
-            createdAt: new Date()
-        };
+        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) return res.status(403).json({ error: 'You do not have permission to create roles' });
+        const maxPosition = Math.max(...roles.filter(r=>r.serverId==serverId).map(r=>r.position),0);
+        const role = { id: generateId(), serverId: parseFloat(serverId), name: name.trim(), color, permissions: Array.isArray(permissions)?permissions:[], position: maxPosition+1, isDefault:false, createdAt: new Date() };
         roles.push(role);
-        res.status(201).json({ role, message: 'Role created successfully' });
+        res.status(201).json({ role, message: 'Role created successfully (memory)' });
     } catch (error) {
         console.error('Create role error:', error);
         res.status(500).json({ error: 'Failed to create role' });
@@ -413,26 +288,33 @@ exports.createRole = (req, res) => {
 };
 
 // Update role (owner/admin only)
-exports.updateRole = (req, res) => {
+exports.updateRole = async (req, res) => {
     try {
         const { serverId, roleId } = req.params;
         const { name, color, permissions, position } = req.body;
         const userId = req.userId;
-
-        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
-        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
-            return res.status(403).json({ error: 'You do not have permission to update roles' });
+        if (DB_ENABLED && roleRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!actor.rows.length || !['owner','admin'].includes(actor.rows[0].role)) return res.status(403).json({ error: 'You do not have permission to update roles' });
+          // ensure not default
+          const defaultCheck = await pool.query('SELECT is_default FROM server_roles WHERE id = $1 AND server_id = $2', [roleId, serverId]);
+          if (!defaultCheck.rows.length) return res.status(404).json({ error: 'Role not found' });
+          if (defaultCheck.rows[0].is_default) return res.status(400).json({ error: 'Cannot modify default role' });
+          const updated = await roleRepo.updateRole(serverId, roleId, { name: name&&name.trim(), color, permissions: Array.isArray(permissions)?permissions:undefined, position });
+          return res.json({ role: updated, message: 'Role updated successfully' });
         }
-
+        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
+        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) return res.status(403).json({ error: 'You do not have permission to update roles' });
         const role = roles.find(r => r.id == roleId && r.serverId == serverId);
         if (!role) return res.status(404).json({ error: 'Role not found' });
         if (role.isDefault) return res.status(400).json({ error: 'Cannot modify default role' });
-
-        if (name !== undefined && name.trim()) role.name = name.trim();
+        if (name && name.trim()) role.name = name.trim();
         if (color !== undefined) role.color = color;
         if (Array.isArray(permissions)) role.permissions = permissions;
         if (typeof position === 'number') role.position = position;
-        res.json({ role, message: 'Role updated successfully' });
+        res.json({ role, message: 'Role updated successfully (memory)' });
     } catch (error) {
         console.error('Update role error:', error);
         res.status(500).json({ error: 'Failed to update role' });
@@ -440,26 +322,29 @@ exports.updateRole = (req, res) => {
 };
 
 // Delete role (owner/admin only)
-exports.deleteRole = (req, res) => {
+exports.deleteRole = async (req, res) => {
     try {
         const { serverId, roleId } = req.params;
         const userId = req.userId;
-
-        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
-        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
-            return res.status(403).json({ error: 'You do not have permission to delete roles' });
+        if (DB_ENABLED && roleRepo) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!actor.rows.length || !['owner','admin'].includes(actor.rows[0].role)) return res.status(403).json({ error: 'You do not have permission to delete roles' });
+          const check = await pool.query('SELECT is_default FROM server_roles WHERE id = $1 AND server_id = $2', [roleId, serverId]);
+          if (!check.rows.length) return res.status(404).json({ error: 'Role not found' });
+          if (check.rows[0].is_default) return res.status(400).json({ error: 'Cannot delete default role' });
+          const success = await roleRepo.deleteRole(serverId, roleId);
+          return res.json({ success, roleId: parseInt(roleId), message: 'Role deleted successfully' });
         }
-
+        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
+        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) return res.status(403).json({ error: 'You do not have permission to delete roles' });
         const idx = roles.findIndex(r => r.id == roleId && r.serverId == serverId);
         if (idx === -1) return res.status(404).json({ error: 'Role not found' });
         if (roles[idx].isDefault) return res.status(400).json({ error: 'Cannot delete default role' });
-
-        const removed = roles.splice(idx, 1)[0];
-        // Remove roleId from members
-        serverMembers.forEach(m => {
-            if (m.serverId == serverId && m.roleId == roleId) m.roleId = null;
-        });
-        res.json({ role: removed, message: 'Role deleted successfully' });
+        const removed = roles.splice(idx,1)[0];
+        serverMembers.forEach(m=>{ if (m.serverId==serverId && m.roleId==roleId) m.roleId=null; });
+        res.json({ role: removed, message: 'Role deleted successfully (memory)' });
     } catch (error) {
         console.error('Delete role error:', error);
         res.status(500).json({ error: 'Failed to delete role' });
@@ -467,61 +352,39 @@ exports.deleteRole = (req, res) => {
 };
 
 // Update member role (owner/admin only)
-exports.updateMemberRole = (req, res) => {
+exports.updateMemberRole = async (req, res) => {
     try {
         const { serverId, userId } = req.params;
         const { role, roleId } = req.body;
         const actorId = req.userId;
-
-        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === actorId);
-        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) {
-            return res.status(403).json({ error: 'You do not have permission to update member roles' });
+        if (DB_ENABLED) {
+          const { getPool } = require('../db');
+          const pool = getPool();
+          const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, actorId]);
+          if (!actor.rows.length || !['owner','admin'].includes(actor.rows[0].role)) return res.status(403).json({ error: 'You do not have permission to update member roles' });
+          const membershipRows = await pool.query('SELECT * FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
+          if (!membershipRows.rows.length) return res.status(404).json({ error: 'Member not found' });
+          const membership = membershipRows.rows[0];
+          if (membership.role === 'owner' && actor.rows[0].role !== 'owner') return res.status(403).json({ error: 'Only the owner can modify the owner role' });
+          let newRole = membership.role;
+          if (role) {
+            if (!['member','admin','owner'].includes(role)) return res.status(400).json({ error: 'Invalid base role' });
+            if ((role === 'admin' || role === 'owner') && actor.rows[0].role !== 'owner') return res.status(403).json({ error: 'Only the owner can assign admin/owner roles' });
+            newRole = role;
+          }
+          await pool.query('UPDATE server_members SET role = $3 WHERE server_id = $1 AND user_id = $2', [serverId, userId, newRole]);
+          try { const io = req.app.get('io'); if (io) io.emit('server-member-updated', { serverId: parseFloat(serverId), userId: parseFloat(userId), role: newRole, roleId: null, action: 'role-changed' }); } catch {}
+          return res.json({ message: 'Member role updated', member: { userId: parseFloat(userId), role: newRole } });
         }
-
+        const actor = serverMembers.find(m => m.serverId == serverId && m.userId === actorId);
+        if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) return res.status(403).json({ error: 'You do not have permission to update member roles' });
         const membership = serverMembers.find(m => m.serverId == serverId && m.userId == userId);
         if (!membership) return res.status(404).json({ error: 'Member not found' });
-
-        // Prevent non-owner from modifying owner base role
-        if (membership.role === 'owner' && actor.role !== 'owner') {
-            return res.status(403).json({ error: 'Only the owner can modify the owner role' });
-        }
-
-        if (role) {
-            if (!['member', 'admin', 'owner'].includes(role)) {
-                return res.status(400).json({ error: 'Invalid base role' });
-            }
-            if ((role === 'admin' || role === 'owner') && actor.role !== 'owner') {
-                return res.status(403).json({ error: 'Only the owner can assign admin/owner roles' });
-            }
-            membership.role = role;
-        }
-
-        if (typeof roleId !== 'undefined') {
-            if (roleId === null) {
-                membership.roleId = null;
-            } else {
-                const r = roles.find(r => r.id == roleId && r.serverId == serverId);
-                if (!r) return res.status(404).json({ error: 'Role not found' });
-                membership.roleId = r.id;
-            }
-        }
-        // Emit role change event for real-time UI updates
-        try {
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('server-member-updated', {
-                    serverId: parseFloat(serverId),
-                    userId: parseFloat(userId),
-                    role: membership.role,
-                    roleId: membership.roleId ?? null,
-                    action: 'role-changed'
-                });
-            }
-        } catch (e) {
-            console.warn('Warning: failed to emit server-member-updated (role-changed):', e);
-        }
-
-        res.json({ message: 'Member role updated', member: membership });
+        if (membership.role === 'owner' && actor.role !== 'owner') return res.status(403).json({ error: 'Only the owner can modify the owner role' });
+        if (role) { if (!['member','admin','owner'].includes(role)) return res.status(400).json({ error: 'Invalid base role' }); if ((role==='admin'||role==='owner') && actor.role!=='owner') return res.status(403).json({ error: 'Only the owner can assign admin/owner roles' }); membership.role = role; }
+        if (typeof roleId !== 'undefined') { if (roleId === null) { membership.roleId = null; } else { const r = roles.find(r => r.id == roleId && r.serverId == serverId); if (!r) return res.status(404).json({ error: 'Role not found' }); membership.roleId = r.id; } }
+        try { const io = req.app.get('io'); if (io) io.emit('server-member-updated', { serverId: parseFloat(serverId), userId: parseFloat(userId), role: membership.role, roleId: membership.roleId ?? null, action: 'role-changed' }); } catch {}
+        res.json({ message: 'Member role updated (memory)', member: membership });
     } catch (error) {
         console.error('Update member role error:', error);
         res.status(500).json({ error: 'Failed to update member role' });
@@ -615,11 +478,30 @@ module.exports = {
     }
     ,
     // Delete server (owner only)
-    deleteServer: (req, res) => {
+    deleteServer: async (req, res) => {
         try {
-            const { serverId } = req.params;
-            const userId = req.userId;
-
+            const { serverId } = req.params; const userId = req.userId;
+            if (DB_ENABLED) {
+              const pool = getPool();
+              const { rows } = await pool.query('SELECT * FROM servers WHERE id = $1', [serverId]);
+              if (!rows.length) return res.status(404).json({ error: 'Server not found' });
+              const server = rows[0];
+              if (server.owner_id !== userId) return res.status(403).json({ error: 'Only the owner can delete this server' });
+              // Collect affected members
+              const members = await pool.query('SELECT user_id FROM server_members WHERE server_id = $1', [serverId]);
+              await pool.query('DELETE FROM servers WHERE id = $1', [serverId]); // cascades
+              try {
+                const io = req.app.get('io');
+                if (io) {
+                  const payload = { serverId: parseInt(serverId,10), serverName: server.name };
+                    for (const m of members.rows) {
+                      io.to(`user-${m.user_id}`).emit('server-deleted', payload);
+                    }
+                }
+              } catch {}
+              return res.json({ message: 'Server deleted successfully' });
+            }
+            // Fallback in-memory delete
             const serverIdx = servers.findIndex(s => s.id == serverId);
             if (serverIdx === -1) return res.status(404).json({ error: 'Server not found' });
             const server = servers[serverIdx];

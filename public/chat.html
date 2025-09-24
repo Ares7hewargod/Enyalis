@@ -828,6 +828,36 @@
             transform: scale(1.02);
         }
 
+        /* Animated 3-dots message menu */
+        .message-menu { 
+            transform: scale(.95) translateY(-4px); 
+            opacity: 0; 
+            transform-origin: top right; 
+            transition: transform 140ms cubic-bezier(.4,.14,.3,1), opacity 140ms ease; 
+            will-change: transform, opacity; 
+            backdrop-filter: blur(4px); 
+        }
+        .message-menu.open { 
+            transform: scale(1) translateY(0); 
+            opacity: 1; 
+        }
+        .message-menu .menu-item { 
+            opacity: 0; 
+            transform: translateX(6px); 
+            animation: fadeSlideIn .25s ease forwards; 
+            background: transparent; 
+            position: relative; 
+        }
+        .message-menu.open .menu-item:nth-child(1){ animation-delay: 40ms; }
+        .message-menu.open .menu-item:nth-child(2){ animation-delay: 80ms; }
+        .message-menu .menu-item:hover { background: #393c43; }
+        .message-menu .menu-item.menu-delete:hover { background:#3a2325; }
+        .message-menu .menu-item.confirming { color:#ffbf47 !important; font-weight:600; }
+        .message-menu .menu-item.confirming:hover { background:#4a4029; }
+        @keyframes fadeSlideIn { from { opacity:0; transform: translateX(6px);} to { opacity:1; transform: translateX(0);} }
+        .message-edited-indicator { color:#8e9297; font-size:11px; font-weight:400; }
+        .message-content.deleted .message-edited-indicator { display:none; }
+
         /* Image modal */
         .image-modal {
             display: none;
@@ -933,6 +963,12 @@
             border-radius: 8px;
             width: 440px;
             color: white;
+        }
+        /* Override layout for the larger Account Settings modal so it isn't pushed too low */
+        #account-settings-modal .modal-content {
+            margin: 4vh auto 0 auto; /* Move it up compared to default 15% */
+            height: 76vh; /* Slightly smaller so no crop */
+            max-height: 86vh; /* Safety on very tall screens */
         }
 
         .modal-header {
@@ -1696,27 +1732,85 @@
         }
 
         .profile-content {
-            padding: 56px 20px 0; /* bottom padding handled by actions footer */
+            padding: 56px 20px 20px; /* standard padding, footer separate */
             display: flex;
             flex-direction: column;
             gap: 10px;
-            flex: 1 1 auto; /* fill remaining space under header */
-            min-height: 0; /* ensures child scroll works in flex container */
-            overflow-y: auto; /* scroll content only */
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
         }
-        /* Sticky footer actions inside profile content */
-        .user-profile-modal .modal-actions {
-            position: sticky;
-            bottom: 0;
-            background: #36393f;
-            border-top: 1px solid #202225;
-            padding: 12px 20px;
-            margin: 10px -20px 0; /* full-bleed footer inside padded content */
+        /* Dedicated footer always at bottom */
+        .profile-footer {
             display: flex;
-            gap: 8px;
             justify-content: flex-end;
+            gap: 8px;
+            padding: 12px 20px;
+            border-top: 1px solid #202225;
+            background: #2f3136;
         }
+        .profile-footer .btn { min-width: 86px; }
         .profile-bio { color:#b9bbbe; margin: 6px 0 10px; white-space: pre-wrap; }
+    /* Full profile bio box styling */
+    .profile-bio-section { margin-top: 8px; display:none; }
+    .profile-bio-section .bio-label-heading { font-size: 12px; font-weight: 600; letter-spacing: .5px; color:#8e9297; text-transform: uppercase; margin: 0 0 6px; }
+    .profile-bio-box { background:#2f3136; border:1px solid #202225; border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.4; color:#ffffff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02); max-height:140px; overflow-y:auto; }
+    .profile-bio-box::-webkit-scrollbar { width:10px; }
+    .profile-bio-box::-webkit-scrollbar-thumb { background:#202225; border:3px solid #2f3136; border-radius:8px; }
+    .profile-bio-box:empty::before { content:"No bio set."; font-style:italic; color:#6f7379; }
+    /* Bio markdown styles */
+    .profile-bio-box .bio-h1 { font-size:18px; margin:4px 0 6px; font-weight:600; }
+    .profile-bio-box .bio-h2 { font-size:16px; margin:4px 0 4px; font-weight:600; }
+    .profile-bio-box .bio-h3 { font-size:15px; margin:4px 0 4px; font-weight:600; opacity:.95; }
+    .profile-bio-box .bio-p { margin:4px 0 8px; }
+    /* Support raw sanitized heading tags (when storing HTML directly) */
+    .profile-bio-box h3, .profile-bio-box h4, .profile-bio-box h5 { font-weight:600; margin:4px 0 6px; line-height:1.25; }
+    .profile-bio-box h3, .profile-bio-box h4, .profile-bio-box h5, .profile-bio-box li, .profile-bio-box p { color:#ffffff; }
+    .profile-bio { color:#ffffff; }
+    /* Generic list support for HTML-stored bios */
+    .profile-bio-box ul, .profile-bio-box ol { list-style-position: inside; margin:4px 0 8px; padding:0; }
+    .profile-bio-box li { margin-left:0; padding-left:0; }
+    /* Popover / mini profile bio container generic list styling */
+    .profile-bio ul, .profile-bio ol { list-style-position: inside; margin:4px 0 8px; padding:0; }
+    .profile-bio li { margin-left:0; padding-left:0; }
+    .profile-bio-box ul.bio-list { list-style: disc inside; margin:4px 0 8px; padding:0; }
+    .profile-bio-box ul.bio-list li { margin-left:4px; margin-bottom:2px; }
+    .profile-bio-box .bio-code { background:#202225; padding:2px 5px; border-radius:4px; font-family:monospace; font-size:13px; }
+    .profile-bio-box a.bio-link { color: var(--brand-3); text-decoration:none; }
+    .profile-bio-box a.bio-link:hover { text-decoration:underline; }
+    /* Bio Editor */
+    .bio-editor-toolbar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+        .bio-editor-toolbar { background:#2a2c31; padding:6px 8px; border:1px solid #202225; border-radius:8px; position:relative; }
+        .bio-editor-toolbar button, .bio-editor-toolbar label, .bio-editor-toolbar select { 
+            background:#32353b; border:1px solid #3c4047; color:#d6d7da; padding:4px 10px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer; line-height:1; display:flex; align-items:center; gap:4px; height:30px; box-shadow:0 1px 2px rgba(0,0,0,0.4) inset; transition:background .15s,border-color .15s,transform .1s; }
+        .bio-editor-toolbar button:hover, .bio-editor-toolbar select:hover, .bio-editor-toolbar label:hover { background:#3d4047; border-color:#4a4f57; }
+        .bio-editor-toolbar button:active { transform:translateY(1px); }
+        .bio-editor-toolbar select { appearance:none; padding-right:22px; position:relative; }
+    .bio-editor-toolbar::-webkit-scrollbar { height:8px; }
+    .bio-editor-toolbar { overflow:hidden; flex-wrap: nowrap !important; white-space: nowrap; gap:6px; }
+    .bio-editor-toolbar button, .bio-editor-toolbar select, .bio-editor-toolbar label { flex: 0 0 auto; min-width:40px; padding:4px 10px; justify-content:center; text-align:center; }
+    .bio-editor-toolbar select { min-width:64px; }
+    .bio-editor-toolbar .separator { width:1px; background:#202225; align-self:center; height:22px; flex:0 0 1px; }
+    /* Compression levels */
+    .bio-editor-toolbar.compressed-1 button, .bio-editor-toolbar.compressed-1 select, .bio-editor-toolbar.compressed-1 label { padding:3px 8px; font-size:11px; min-width:36px; }
+    .bio-editor-toolbar.compressed-1 select { min-width:56px; }
+    .bio-editor-toolbar.compressed-2 button, .bio-editor-toolbar.compressed-2 select, .bio-editor-toolbar.compressed-2 label { padding:2px 6px; font-size:10px; min-width:32px; }
+    .bio-editor-toolbar.compressed-2 select { min-width:52px; }
+    .bio-editor-toolbar.compressed-3 button, .bio-editor-toolbar.compressed-3 select, .bio-editor-toolbar.compressed-3 label { padding:1px 4px; font-size:9px; min-width:30px; }
+    .bio-editor-toolbar.compressed-3 select { min-width:48px; }
+    .bio-editor { background:#202225; border:1px solid #202225; border-radius:6px; padding:10px; min-height:120px; max-height:240px; overflow-y:auto; font-size:14px; line-height:1.4; white-space:pre-wrap; outline:none; color:#ffffff; }
+    .bio-editor h3, .bio-editor h4, .bio-editor h5, .bio-editor p, .bio-editor span, .bio-editor li { color:inherit !important; }
+    .bio-editor ul, .bio-editor ol { list-style-position: inside; padding-left:0; margin:4px 0 8px; }
+    .bio-editor li { margin-left:0; }
+    .bio-editor:focus { border-color: var(--brand-3); box-shadow:0 0 0 2px rgba(255,41,117,0.35); }
+    .bio-editor .center { text-align:center; display:block; }
+    .bio-editor span[data-color] { color:inherit; }
+    .bio-editor-empty::before { content:'Start typing your bio...'; color:#6f7379; }
+    .bio-color-input { width:28px; height:28px; padding:0; border:none; cursor:pointer; background:transparent; }
+    .bio-editor-toolbar .separator { width:1px; background:#202225; margin:0 4px; align-self:stretch; }
+    .bio-editor code { background:#18191c; padding:2px 4px; border-radius:4px; font-family:monospace; font-size:13px; }
+    .bio-editor::-webkit-scrollbar { width:12px; }
+    .bio-editor::-webkit-scrollbar-thumb { background:#2f3136; border:3px solid #202225; border-radius:8px; }
         .profile-servers { margin-top: 10px; }
         .profile-servers h4 { margin: 8px 0; font-size: 14px; color:#b9bbbe; }
         .profile-server-list { display:flex; gap:8px; flex-wrap: wrap; }
@@ -1741,6 +1835,18 @@
     .role-dot { width: 8px; height: 8px; border-radius: 50%; background: #5865f2; display: inline-block; }
     .profile-section-separator { height: 1px; background: var(--border-color); margin: 8px 0; border: none; }
     .bio-label { font-size: 12px; color: #8e9297; text-transform: uppercase; margin-bottom: 6px; }
+
+    /* --- INLINE ROLES LAYOUT ENHANCEMENT (popover / mini preview) --- */
+    /* Ensure label and chips share a single horizontal row */
+    /* Inline roles: ensure label + chips share first line */
+    .mini-profile-roles { flex-direction: row !important; align-items: center !important; }
+    .mini-profile-roles .roles-label,
+    .mini-profile-roles .roles-inline-label { margin: 0 8px 0 0 !important; line-height: 1; display: inline-block; flex: 0 0 auto; white-space: nowrap; }
+    .mini-profile-roles .role-chip-list,
+    .mini-profile-roles .role-chip-list.inline { display:flex; flex:1 1 auto; flex-wrap: wrap; gap:6px; min-width:0; overflow: visible; white-space: normal; }
+    /* Remove horizontal scroll from earlier attempt */
+    .mini-profile-roles .role-chip-list::-webkit-scrollbar,
+    .mini-profile-roles .role-chip-list.inline::-webkit-scrollbar { height:0; }
 
     /* Floating Profile Popover (no overlay) */
     .profile-popover { position: fixed; z-index: 2600; background: #36393f; border: 1px solid #202225; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); width: 360px; max-width: 92vw; overflow: hidden; }
@@ -2148,15 +2254,15 @@
                 </div>
             </div>
 
-            <div class="user-area">
+            <div class="user-area" id="current-user-area" style="cursor:pointer;" title="View Profile / Settings" onclick="openOwnProfile(event)">
                 <div class="user-info">
                     <div class="user-avatar" id="user-avatar"></div>
                     <div class="user-details">
                         <div class="username" id="current-username">Loading...</div>
-                        <div class="user-status">Online</div>
+                        <div class="user-status" id="current-user-status">Online</div>
                     </div>
                 </div>
-                <button class="action-btn" id="account-settings-btn" title="User Settings" onclick="openAccountSettings()" style="margin-left:auto;">
+                <button class="action-btn" id="account-settings-btn" title="User Settings" onclick="event.stopPropagation(); openAccountSettings();" style="margin-left:auto;">
                     <img src="assets/icons/gear.svg" alt="Settings" class="icon-20" />
                 </button>
             </div>
@@ -2282,8 +2388,8 @@
             </div>
             <div class="profile-content">
                 <div class="profile-username" id="popover-profile-username"></div>
-                <div class="mini-profile-roles" id="popover-roles" style="display:none;">
-                    <span class="roles-inline-label">Roles</span>
+                <div class="mini-profile-roles" id="popover-roles">
+                    <span class="roles-inline-label">ROLES</span>
                     <div class="role-chip-list inline" id="popover-role-list"></div>
                 </div>
                 <hr class="profile-section-separator" id="popover-roles-sep" style="display:none;" />
@@ -2486,15 +2592,18 @@
             <div class="profile-content">
                 <div class="profile-username" id="profile-username"></div>
                 <div class="profile-email" id="profile-email"></div>
-                <div class="profile-bio" id="profile-bio" style="display:none;"></div>
+                <div class="profile-bio-section" id="profile-bio-section" style="display:none;">
+                    <div class="bio-label-heading">Bio</div>
+                    <div class="profile-bio-box" id="profile-bio"></div>
+                </div>
                 <div class="profile-servers" id="profile-servers" style="display:none;">
                     <h4>Servers</h4>
                     <div class="profile-server-list" id="profile-server-list"></div>
                 </div>
-                <div class="modal-actions" id="profile-modal-actions">
-                    <button type="button" class="btn btn-primary" id="profile-add-friend-btn" onclick="sendFriendRequestToProfile()">Add Friend</button>
-                    <button type="button" class="btn btn-secondary" id="profile-close-btn" onclick="hideUserProfile()">Close</button>
-                </div>
+            </div>
+            <div class="profile-footer" id="profile-modal-actions">
+                <button type="button" class="btn btn-primary" id="profile-add-friend-btn" onclick="sendFriendRequestToProfile()">Add Friend</button>
+                <button type="button" class="btn btn-secondary" id="profile-close-btn" onclick="hideUserProfile()">Close</button>
             </div>
         </div>
     </div>
@@ -2629,18 +2738,21 @@
 
     <!-- Account Settings Modal -->
     <div id="account-settings-modal" class="modal" style="display:none;">
-        <div class="modal-content" style="width: 760px; max-width: 96vw; height: 80vh; max-height: 90vh; display:flex; flex-direction:column;">
-            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
-                <span>Account Settings</span>
-                <button class="btn btn-secondary" onclick="closeAccountSettings()">Close</button>
+        <div class="modal-content" style="width: 760px; max-width: 96vw; height: 80vh; max-height: 90vh; display:flex; flex-direction:column; position:relative;">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; gap:12px;">
+                <span style="flex:1;">Account Settings</span>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-primary" onclick="document.getElementById('account-profile-form').requestSubmit();" style="min-width:110px;">Save</button>
+                    <button class="btn btn-secondary" onclick="closeAccountSettings()" style="min-width:80px;">Close</button>
+                </div>
             </div>
-            <div style="display:flex; gap:16px; flex:1; min-height:0;">
+            <div class="account-settings-body" style="display:flex; gap:16px; flex:1 1 auto; min-height:0; overflow:hidden;">
                 <div style="flex: 0 0 240px; border-right: 1px solid var(--border-color); padding-right: 12px; overflow:auto;">
                     <div style="color:#b9bbbe; font-size:12px; margin-bottom:6px;">USER SETTINGS</div>
                     <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('profile')">Profile</button>
                     <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('voice')">Voice & Audio</button>
                 </div>
-                <div id="account-settings-content" style="flex:1; overflow:auto; padding-right: 4px;">
+                <div id="account-settings-content" style="flex:1 1 auto; overflow:auto; padding-right: 4px;">
                     <div id="account-section-profile">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:8px;">
                             <div id="account-avatar-preview" class="user-avatar changeable-avatar" style="width:96px; height:96px; font-size:34px; cursor:pointer;" title="Click to change avatar" onclick="triggerAccountAvatarPick()">A</div>
@@ -2657,19 +2769,34 @@
                                 </div>
                             </div>
                         </div>
-                        <form onsubmit="return saveAccountProfile(event)" style="margin-top:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+                        <form id="account-profile-form" onsubmit="return saveAccountProfile(event)" style="margin-top:16px; max-width:520px; margin-left:auto; margin-right:auto;">
                             <div class="form-group">
                                 <label class="form-label">Name</label>
                                 <input id="account-username-input" class="form-input" placeholder="Your name" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Bio</label>
-                                <textarea id="account-bio-input" class="form-input" rows="3" maxlength="190" placeholder="Tell people a bit about you (max 190 chars)"></textarea>
+                                <label class="form-label">Bio (rich)</label>
+                                <div class="bio-editor-toolbar">
+                                    <button type="button" onclick="bioExec('bold')" title="Bold"><b>B</b></button>
+                                    <button type="button" onclick="bioExec('italic')" title="Italic"><em>I</em></button>
+                                    <button type="button" onclick="bioApplyHeading(3)" title="Heading 1">H1</button>
+                                    <button type="button" onclick="bioApplyHeading(4)" title="Heading 2">H2</button>
+                                    <button type="button" onclick="bioApplyHeading(5)" title="Heading 3">H3</button>
+                                    <div class="separator"></div>
+                                    <button type="button" onclick="bioInsertList()" title="Bulleted List">• List</button>
+                                    <button type="button" onclick="bioCenter()" title="Center Selection">Center</button>
+                                    <!-- Color & highlight controls removed -->
+                                    <select onchange="bioFontSize(this.value)" title="Font Size">
+                                        <option value="">Size</option>
+                                        <option>12</option><option>14</option><option>16</option><option>18</option><option>20</option><option>22</option><option>24</option>
+                                    </select>
+                                    <button type="button" onclick="bioClearFormatting()" title="Clear Formatting">Clear</button>
+                                </div>
+                                <div id="account-bio-editor" class="bio-editor" contenteditable="true" data-placeholder="Start typing your bio..."></div>
+                                <input type="hidden" id="account-bio-input" />
+                                <div style="font-size:11px; color:#6f7379; margin-top:4px;">Tab inserts 4 spaces • Max 1000 characters (after sanitization)</div>
                             </div>
-                            <div class="modal-actions" style="justify-content:flex-end;">
-                                <button type="button" class="btn btn-secondary" onclick="closeAccountSettings()">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </div>
+                            <!-- Footer removed from inside scroll; global footer now used -->
                         </form>
                     </div>
                     <div id="account-section-voice" style="display:none;">
@@ -2678,6 +2805,7 @@
                     </div>
                 </div>
             </div>
+            <!-- Removed bottom footer; Save/Close now in header -->
         </div>
     </div>
 
@@ -2965,6 +3093,9 @@
                     console.log('Message channel ID:', message.channelId, 'Current channel ID:', currentChannel?.id);
                 }
             });
+
+            // Attach edit/delete listeners after socket is ready
+            attachEditDeleteSocketListeners();
             
             // Listen for friend request notifications
             socket.on('friend-request-received', (data) => {
@@ -3634,6 +3765,9 @@
             const messagesContainer = document.getElementById('messages-container');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
+            messageDiv.dataset.messageId = message.id;
+            messageDiv.dataset.channelId = message.channelId || '';
+            messageDiv.dataset.isDm = currentView === 'dm' ? 'true' : 'false';
             
             // Handle both DM messages (createdAt) and channel messages (timestamp)
             const messageTime = message.createdAt || message.timestamp;
@@ -3657,22 +3791,46 @@
             const avatarUrl = message.avatar || null;
             const authorAvatarStyle = avatarUrl ? `style="background-image:url(${avatarUrl}); background-size:cover; background-position:center; background-repeat:no-repeat;"` : '';
             const authorAvatarClass = avatarUrl ? 'message-avatar has-image' : 'message-avatar';
+            const editableByCurrent = (currentUser && (message.userId === currentUser.id || message.senderId === currentUser.id)) && !message.deleted;
+            const deletedClass = message.deleted ? 'deleted' : '';
+            const editedBadge = message.edited ? `<span class="message-edited-indicator" title="Edited">(edited)</span>` : '';
             messageDiv.innerHTML = `
                 <div class="${authorAvatarClass}" ${authorAvatarStyle}>${avatarUrl ? '' : authorInitial}</div>
-                <div class="message-content">
-                    <div class="message-header">
+                <div class="message-content ${deletedClass}">
+                    <div class="message-header" style="display:flex; align-items:baseline; gap:6px;">
                         <span class="message-author" data-user-id="${message.userId || message.senderId || ''}" style="color: ${inlineAuthorColor}">${message.username}</span>
-                        <span class="message-timestamp">${timeAgo} at ${actualTime}</span>
+                        <span class="message-timestamp" style="font-size:12px; color:#72767d;">${timeAgo} at ${actualTime} ${editedBadge}</span>
+                        <div class="message-header-spacer" style="flex:1 1 auto;"></div>
+                        ${editableByCurrent ? `<div class="message-actions" style="display:none; position:relative;">
+                            <button class="msg-btn more" title="More" onclick="toggleMessageMenu(event, '${message.id}')" style="background:transparent; border:none; color:#b9bbbe; cursor:pointer; padding:2px 6px; font-size:18px; line-height:1; transition:color .15s ease, transform .15s ease;">⋯</button>
+                            <div class="message-menu" data-open="false" style="display:none; position:absolute; right:0; top:100%; background:rgba(47,49,54,.96); border:1px solid #202225; border-radius:6px; padding:4px 0; min-width:150px; z-index:60; box-shadow:0 6px 18px rgba(0,0,0,0.5);">
+                                <button class="menu-item" data-action="edit" onclick="startEditMessage(event, '${message.id}')" style="display:block; width:100%; text-align:left; border:none; color:#dcddde; padding:8px 14px; cursor:pointer; font-size:13px;">Edit</button>
+                                <button class="menu-item menu-delete" data-action="delete" onclick="deleteMessage(event, '${message.id}')" style="display:block; width:100%; text-align:left; border:none; color:#ed4245; padding:8px 14px; cursor:pointer; font-size:13px;">Delete</button>
+                            </div>
+                        </div>` : ''}
                     </div>
-                    <div class="message-text">${linkifyMessageText(messageText)}</div>
-                    ${message.attachments && message.attachments.length > 0 ? 
-                        message.attachments.map(att => 
-                            att.type === 'image' ? 
-                                `<div class="message-attachment"><img src="${att.url}" alt="${att.filename}" class="message-image" onclick="openImageModal('${att.url}')"></div>` : 
+                    <div class="message-text" data-original="${escapeHtml(messageText)}">${message.deleted ? '<i style="color:#8e9297;">This message was deleted</i>' : linkifyMessageText(messageText) + (message.edited ? ' <span class="message-edited-indicator" title="Edited">(edited)</span>' : '')}</div>
+                    ${message.attachments && message.attachments.length > 0 ?
+                        message.attachments.map(att =>
+                            att.type === 'image' ?
+                                `<div class="message-attachment"><img src="${att.url}" alt="${att.filename}" class="message-image" onclick="openImageModal('${att.url}')"></div>` :
                                 `<div class="message-attachment">📎 ${att.filename}</div>`
                         ).join('') : ''}
                 </div>
             `;
+            if (editableByCurrent) {
+                messageDiv.addEventListener('mouseenter', () => {
+                    const actions = messageDiv.querySelector('.message-actions');
+                    if (actions) actions.style.display = 'block';
+                });
+                messageDiv.addEventListener('mouseleave', () => {
+                    const actions = messageDiv.querySelector('.message-actions');
+                    if (actions) {
+                        const menu = actions.querySelector('.message-menu');
+                        if (!menu || menu.dataset.open !== 'true') actions.style.display = 'none';
+                    }
+                });
+            }
             
             messagesContainer.appendChild(messageDiv);
             // Apply color to this author
@@ -3746,6 +3904,206 @@
             } catch (error) {
                 console.error('Error sending message:', error);
             }
+        }
+
+        // ===== Message Edit/Delete Frontend Logic =====
+        let editingMessageId = null;
+        function startEditMessage(ev, messageId) {
+            ev.stopPropagation();
+            if (editingMessageId) finishEditMessage(false);
+            const msgEl = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!msgEl) return;
+            // Close the 3-dots menu immediately so user has clean edit space
+            const menu = msgEl.querySelector('.message-menu');
+            const actionsWrap = msgEl.querySelector('.message-actions');
+            if (menu) { menu.dataset.open = 'false'; menu.classList.remove('open'); menu.style.display = 'none'; }
+            if (actionsWrap) { actionsWrap.style.display = 'none'; }
+            const textEl = msgEl.querySelector('.message-text');
+            if (!textEl || textEl.classList.contains('editing')) return;
+            if (textEl.closest('.message-content')?.classList.contains('deleted')) return;
+            editingMessageId = messageId;
+            const original = textEl.getAttribute('data-original') || textEl.textContent || '';
+            textEl.dataset.prevHtml = textEl.innerHTML;
+            textEl.classList.add('editing');
+            textEl.innerHTML = `<textarea class="message-edit-textarea" style="width:100%; background:#2f3136; color:#dcddde; border:1px solid #4f545c; border-radius:4px; padding:6px; font:inherit; resize:vertical; min-height:60px;">${escapeHtml(original)}</textarea>
+            <div class="edit-actions" style="margin-top:4px; display:flex; gap:8px;">
+              <button class="btn btn-sm" onclick="confirmEditMessage('${messageId}')">Save</button>
+              <button class="btn btn-sm btn-secondary" onclick="finishEditMessage(false)">Cancel</button>
+              <span style="font-size:11px; color:#8e9297; margin-left:auto;">Press Enter to save, Esc to cancel</span>
+            </div>`;
+            const ta = textEl.querySelector('textarea');
+            ta.focus();
+            ta.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmEditMessage(messageId); }
+                else if (e.key === 'Escape') { e.preventDefault(); finishEditMessage(false); }
+            });
+        }
+        async function confirmEditMessage(messageId) {
+            const msgEl = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!msgEl) return finishEditMessage(false);
+            const textEl = msgEl.querySelector('.message-text');
+            const ta = textEl.querySelector('textarea');
+            if (!ta) return finishEditMessage(false);
+            const newContent = ta.value.trim();
+            if (!newContent) { finishEditMessage(false); return; }
+            const isDm = msgEl.dataset.isDm === 'true';
+            try {
+                // Optimistic immediate update & local event
+                textEl.classList.remove('editing');
+                textEl.setAttribute('data-original', newContent);
+                textEl.innerHTML = linkifyMessageText(newContent) + ' <span class="message-edited-indicator" title="Edited">(edited)</span>';
+                // Fire a local synthetic event so other code relying on socket path stays consistent in dev without server round-trip delay
+                setTimeout(()=>{
+                    const evtName = isDm ? 'dm-message-edited' : 'message-edited';
+                    if (socket) socket.emit && socket.emit('__local_echo__', { type: evtName, id: messageId });
+                },0);
+                const resp = await fetch(`/api/messages/${isDm ? 'dm' : 'channel'}/${messageId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                    body: JSON.stringify({ content: newContent })
+                });
+                const data = await resp.json().catch(()=>({}));
+                if (!resp.ok) { showNotification(data.error || 'Failed to edit message', 'error'); finishEditMessage(false); return; }
+            } catch (e) { console.error('Edit message failed', e); showNotification('Failed to edit message', 'error'); }
+            finally { editingMessageId = null; }
+        }
+        function finishEditMessage(apply) {
+            if (!editingMessageId) return;
+            const msgEl = document.querySelector(`.message[data-message-id="${editingMessageId}"]`);
+            if (!msgEl) { editingMessageId = null; return; }
+            const textEl = msgEl.querySelector('.message-text');
+            if (!textEl) { editingMessageId = null; return; }
+            if (!apply) {
+                const prev = textEl.dataset.prevHtml;
+                if (prev) textEl.innerHTML = prev;
+            }
+            textEl.classList.remove('editing');
+            delete textEl.dataset.prevHtml;
+            editingMessageId = null;
+        }
+        const deleteConfirmState = new Map(); // messageId -> timestamp of first click
+        async function deleteMessage(ev, messageId) {
+            ev.stopPropagation();
+            const msgEl = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!msgEl) return;
+            const menu = msgEl.querySelector('.message-menu');
+            const btn = ev.currentTarget; // the delete button
+            const now = Date.now();
+            const first = deleteConfirmState.get(messageId);
+            if (!first || (now - first) > 4000) { // first click or expired
+                deleteConfirmState.set(messageId, now);
+                btn.textContent = 'Are you sure?';
+                btn.classList.add('confirming');
+                // auto revert after timeout
+                setTimeout(()=>{
+                    if (deleteConfirmState.get(messageId) === now) {
+                        deleteConfirmState.delete(messageId);
+                        if (btn.isConnected) { btn.textContent = 'Delete'; btn.classList.remove('confirming'); }
+                    }
+                }, 4000);
+                return;
+            }
+            // second click: proceed
+            deleteConfirmState.delete(messageId);
+            btn.disabled = true;
+            btn.style.opacity = '.6';
+            const isDm = msgEl.dataset.isDm === 'true';
+            // Optimistic UI change immediately
+            markMessageDeleted(messageId);
+            setTimeout(()=>{
+                if (socket) socket.emit && socket.emit('__local_echo__', { type: isDm ? 'dm-message-deleted' : 'message-deleted', id: messageId });
+            },0);
+            try {
+                const resp = await fetch(`/api/messages/${isDm ? 'dm' : 'channel'}/${messageId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!resp.ok) {
+                    showNotification('Delete failed (reverting)', 'error');
+                    // Could optionally re-fetch or revert; simpler: fetch latest for message list
+                }
+            } catch (e) { console.error('Delete failed', e); showNotification('Failed to delete message', 'error'); }
+            finally {
+                if (menu) { menu.dataset.open = 'false'; menu.classList.remove('open'); menu.style.display='none'; }
+                const actions = msgEl.querySelector('.message-actions');
+                if (actions) actions.style.display='none';
+            }
+        }
+        function markMessageDeleted(messageId) {
+            const msgEl = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!msgEl) return;
+            const content = msgEl.querySelector('.message-content');
+            const textEl = msgEl.querySelector('.message-text');
+            if (content) content.classList.add('deleted');
+            if (textEl) textEl.innerHTML = '<i style="color:#8e9297;">This message was deleted</i>';
+            const actions = msgEl.querySelector('.message-actions');
+            if (actions) actions.remove();
+        }
+
+        // ===== 3-dots menu helpers =====
+        function closeAllMessageMenus(exceptId=null){
+            document.querySelectorAll('.message-menu[data-open="true"]').forEach(menu => {
+                const parentMsg = menu.closest('.message');
+                if (exceptId && parentMsg && parentMsg.dataset.messageId === exceptId) return;
+                menu.dataset.open = 'false';
+                menu.style.display = 'none';
+                const actions = menu.closest('.message-actions');
+                if (actions) actions.style.display = 'none';
+            });
+        }
+        function toggleMessageMenu(ev, messageId){
+            ev.stopPropagation();
+            const msgEl = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!msgEl) return;
+            const actions = msgEl.querySelector('.message-actions');
+            const menu = msgEl.querySelector('.message-menu');
+            if (!menu) return;
+            const isOpen = menu.dataset.open === 'true';
+            if (isOpen){
+                menu.dataset.open = 'false';
+                menu.classList.remove('open');
+                menu.style.display = 'none';
+                actions.style.display = 'block';
+            } else {
+                closeAllMessageMenus(messageId);
+                actions.style.display = 'block';
+                menu.dataset.open = 'true';
+                menu.style.display = 'block';
+                requestAnimationFrame(()=> menu.classList.add('open'));
+            }
+        }
+        document.addEventListener('click', (e)=>{
+            if (e.target.closest('.message-actions')) return; // inside
+            closeAllMessageMenus();
+        });
+
+        function attachEditDeleteSocketListeners(){
+            if (window.__editDeleteSocketsAttached) return;
+            if (!socket) return; // wait until initialized
+            window.__editDeleteSocketsAttached = true;
+            console.log('[Socket] Attaching edit/delete listeners');
+            socket.on('message-edited', (data) => {
+                const msgEl = document.querySelector(`.message[data-message-id="${data.id}"]`);
+                if (msgEl) {
+                    const textEl = msgEl.querySelector('.message-text');
+                    if (textEl && !msgEl.classList.contains('editing')) {
+                        textEl.setAttribute('data-original', data.content);
+                        textEl.innerHTML = linkifyMessageText(data.content) + ' <span class="message-edited-indicator" title="Edited">(edited)</span>';
+                    }
+                }
+            });
+            socket.on('message-deleted', (data) => { markMessageDeleted(data.id); });
+            socket.on('dm-message-edited', (data) => {
+                const msgEl = document.querySelector(`.message[data-message-id="${data.id}"]`);
+                if (msgEl) {
+                    const textEl = msgEl.querySelector('.message-text');
+                    if (textEl && !msgEl.classList.contains('editing')) {
+                        textEl.setAttribute('data-original', data.text);
+                        textEl.innerHTML = linkifyMessageText(data.text) + ' <span class="message-edited-indicator" title="Edited">(edited)</span>';
+                    }
+                }
+            });
+            socket.on('dm-message-deleted', (data) => { markMessageDeleted(data.id); });
         }
 
         // Handle image selection
@@ -5924,10 +6282,24 @@
         
         // Open user profile modal (fetches full profile incl. banner/bio/servers)
         function openUserProfile(userId, username, avatar = null) {
+            // Helper to parse current logged in user id from JWT (cached after first call)
+            if (typeof window.getCurrentUserId !== 'function') {
+                window.getCurrentUserId = function() {
+                    if (window._cachedCurrentUserId) return window._cachedCurrentUserId;
+                    const token = localStorage.getItem('token');
+                    if (!token || token.split('.').length !== 3) return null;
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        window._cachedCurrentUserId = payload.id || payload.userId || payload.sub || null;
+                        return window._cachedCurrentUserId;
+                    } catch (e) { return null; }
+                }
+            }
             currentProfileUser = { id: userId, username, avatar };
             const nameEl = document.getElementById('profile-username');
             const pfp = document.getElementById('profile-avatar');
             const headerEl = document.getElementById('profile-header');
+            const bioWrapper = document.getElementById('profile-bio-section');
             const bioEl = document.getElementById('profile-bio');
             const serversEl = document.getElementById('profile-servers');
             const serverListEl = document.getElementById('profile-server-list');
@@ -5954,15 +6326,61 @@
                 }
             }
             if (headerEl) headerEl.style.backgroundImage = '';
-            if (bioEl) { bioEl.textContent = ''; bioEl.style.display = 'none'; }
+            if (bioEl) bioEl.textContent = '';
+            if (bioWrapper) bioWrapper.style.display = 'none';
             if (serversEl) { serversEl.style.display = 'none'; }
             if (serverListEl) serverListEl.innerHTML = '';
 
             document.getElementById('user-profile-modal').style.display = 'flex';
-            // Update actions (friend/message button)
-            checkFriendshipStatus(userId);
+            // If viewing own profile, hide friend actions entirely
+            const myId = window.getCurrentUserId();
+            if (myId && String(myId) === String(userId)) {
+                const footer = document.getElementById('profile-modal-actions');
+                if (footer) {
+                    footer.innerHTML = `
+                        <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                    `;
+                }
+                if (addBtn) addBtn.style.display = 'none';
+            } else {
+                // Update actions (friend/message button) only for other users
+                checkFriendshipStatus(userId);
+            }
             // Fetch full profile
             loadAndPopulateUserProfile(userId, username, avatar);
+        }
+
+        // Open the currently logged in user's own profile from the bottom user area
+        function openOwnProfile(e) {
+            if (e) e.stopPropagation();
+            // Ensure helper exists even if no other profile was opened yet
+            if (typeof window.getCurrentUserId !== 'function') {
+                window.getCurrentUserId = function() {
+                    if (window._cachedCurrentUserId) return window._cachedCurrentUserId;
+                    const token = localStorage.getItem('token');
+                    if (!token || token.split('.').length !== 3) return null;
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        window._cachedCurrentUserId = payload.id || payload.userId || payload.sub || null;
+                        return window._cachedCurrentUserId;
+                    } catch { return null; }
+                }
+            }
+            const myId = window.getCurrentUserId();
+            if (!myId) return;
+            // Pull current displayed username/avatar if available
+            const usernameEl = document.getElementById('current-username');
+            const avatarEl = document.getElementById('user-avatar');
+            let username = usernameEl ? usernameEl.textContent.trim() : 'You';
+            let avatar = null;
+            if (avatarEl && avatarEl.style && avatarEl.style.backgroundImage) {
+                const bg = avatarEl.style.backgroundImage;
+                if (bg.startsWith('url(')) {
+                    avatar = bg.slice(4, -1).replace(/"/g,'');
+                }
+            }
+            console.debug('Opening own profile', { myId, username, avatar });
+            openUserProfile(myId, username, avatar);
         }
 
         async function loadAndPopulateUserProfile(userId, fallbackUsername, fallbackAvatar) {
@@ -5984,6 +6402,7 @@
                 const nameEl = document.getElementById('profile-username');
                 const pfp = document.getElementById('profile-avatar');
                 const headerEl = document.getElementById('profile-header');
+                const bioWrapper = document.getElementById('profile-bio-section');
                 const bioEl = document.getElementById('profile-bio');
                 const serversEl = document.getElementById('profile-servers');
                 const serverListEl = document.getElementById('profile-server-list');
@@ -6011,10 +6430,8 @@
                         headerEl.style.backgroundImage = '';
                     }
                 }
-                if (bioEl) {
-                    bioEl.textContent = currentProfileUser.bio || '';
-                    bioEl.style.display = currentProfileUser.bio ? 'block' : 'none';
-                }
+                if (bioEl) bioEl.innerHTML = renderBio(currentProfileUser.bio || '');
+                if (bioWrapper) bioWrapper.style.display = currentProfileUser.bio ? 'block' : 'none';
                 if (serverListEl) {
                     serverListEl.innerHTML = '';
                     const servers = Array.isArray(profile.servers) ? profile.servers : [];
@@ -6042,10 +6459,114 @@
                 console.error('Failed to load profile', e);
             }
         }
+
+        // Lightweight markdown-ish renderer for bios (headings, bold, italic, code, lists, links, line breaks)
+        function renderBioMarkdown(src) {
+            if (!src) return '';
+            // Escape HTML first
+            let text = src.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c));
+            // Headings (###, ##, #) at line start
+            text = text.replace(/^###\s+(.+)$/gm, '<h5 class="bio-h bio-h3">$1</h5>')
+                       .replace(/^##\s+(.+)$/gm, '<h4 class="bio-h bio-h2">$1</h4>')
+                       .replace(/^#\s+(.+)$/gm, '<h3 class="bio-h bio-h1">$1</h3>');
+            // Bold **text**
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Italic *text* (avoid bold overlap)
+            text = text.replace(/(^|[^*])\*(?!\*)([^\n*][^\n]*?)\*(?!\*)/g, '$1<em>$2</em>');
+            // Inline code `code`
+            text = text.replace(/`([^`]{1,60})`/g, '<code class="bio-code">$1</code>');
+            // Links [text](url)
+            text = text.replace(/\[([^\]]{1,60})\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="bio-link">$1</a>');
+            // Unordered list lines starting with - or *
+            if (/^(?:-|\*)\s+/m.test(text)) {
+                text = text.replace(/(?:^|\n)(?:-|\*)\s+.*(?:\n(?:-|\*)\s+.*)*/g, block => {
+                    const items = block.trim().split(/\n/).map(l => l.replace(/^(?:-|\*)\s+/, ''));
+                    return '\n<ul class="bio-list">' + items.map(i => '<li>' + i + '</li>').join('') + '</ul>';
+                });
+            }
+            // Paragraph & line breaks: collapse multiple blank lines to single
+            text = text.replace(/\n{3,}/g, '\n\n');
+            // Convert double newlines to paragraph breaks
+            const parts = text.split(/\n\n/).map(p => p.includes('<h') || p.startsWith('<ul') ? p : '<p class="bio-p">' + p.replace(/\n/g,'<br>') + '</p>');
+            return parts.join('');
+        }
+        // Sanitize HTML bio (keep limited inline styles for color, background, size, align)
+        function sanitizeBioHtml(html){
+            if(!html) return '';
+            // Convert <font color> to <span style="color:..."> before stripping
+            html = html.replace(/<font([^>]*)color=("|')?([^"'>]+)\2?([^>]*)>/gi, '<span style="color:$3">');
+            html = html.replace(/<font[^>]*>/gi,'<span>');
+            html = html.replace(/<\/font>/gi,'</span>');
+            // Remove scripts/styles entirely
+            html = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+            const allowedTags = new Set(['B','STRONG','I','EM','CODE','UL','OL','LI','BR','SPAN','H3','H4','H5','P']);
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const walker = document.createTreeWalker(temp, NodeFilter.SHOW_ELEMENT, null);
+            const toRemove = [];
+            while(walker.nextNode()){
+                const el = walker.currentNode;
+                if(!allowedTags.has(el.tagName)){
+                    // Replace disallowed block with its text content
+                    const span = document.createTextNode(el.textContent);
+                    el.parentNode.replaceChild(span, el);
+                    continue;
+                }
+                // Clean attributes
+                [...el.attributes].forEach(attr=>{
+                    if(attr.name.startsWith('on')) el.removeAttribute(attr.name);
+                    if(attr.name === 'style'){
+                        const safeStyles = [];
+                        attr.value.split(';').forEach(rule=>{
+                            const r = rule.trim(); if(!r) return;
+                            if(/^(font-size|text-align)\s*:/i.test(r)) safeStyles.push(r); // color/background removed
+                        });
+                        if(safeStyles.length) el.setAttribute('style', safeStyles.join('; ')); else el.removeAttribute('style');
+                    } else if(attr.name !== 'style') {
+                        // Remove all non-style attributes (including class) to avoid unexpected styling injection
+                        el.removeAttribute(attr.name);
+                    }
+                });
+                // Normalize heading tags (we use h3-h5 for sizes)
+                if(/^H[1-2]$/.test(el.tagName)){
+                    el.outerHTML = '<h3>'+el.textContent+'</h3>';
+                }
+                if(el.tagName === 'DIV'){
+                    const p = document.createElement('p');
+                    p.innerHTML = el.innerHTML; el.parentNode.replaceChild(p, el);
+                }
+            }
+            // Remove empty spans/headings
+            temp.querySelectorAll('span,h3,h4,h5,p').forEach(n=>{ if(!n.textContent.trim()) n.remove(); });
+            return temp.innerHTML.trim();
+        }
+        // General renderer that decides whether stored bio is HTML or markdown-ish text
+        function renderBio(bio){
+            if(!bio) return '';
+            if(bio.includes('<')){ return sanitizeBioHtml(bio); }
+            return renderBioMarkdown(bio);
+        }
         
         // Check friendship status and update profile buttons
         async function checkFriendshipStatus(userId) {
             try {
+                // Early exit if self profile
+                if (typeof window.getCurrentUserId === 'function') {
+                    const myId = window.getCurrentUserId();
+                    if (myId && String(myId) === String(userId)) {
+                        const footer = document.getElementById('profile-modal-actions');
+                        if (footer) {
+                            footer.innerHTML = `
+                                <button type="button" class="btn btn-secondary" onclick="hideUserProfile()">Close</button>
+                            `;
+                        }
+                        const actionsDiv = document.querySelector('.profile-actions');
+                        if (actionsDiv) actionsDiv.innerHTML = '';
+                        const addBtn = document.getElementById('profile-add-friend-btn');
+                        if (addBtn) addBtn.style.display = 'none';
+                        return; // do not call backend for self
+                    }
+                }
                 const response = await fetch('/api/friends/status/' + userId, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
@@ -6404,14 +6925,20 @@
         
         // Get last message preview for DM list
         function getLastMessagePreview(userId) {
-            const userMessages = directMessages.get(parseInt(userId));
-            if (!userMessages || userMessages.length === 0) {
-                return 'Click to start conversation';
+            const uid = parseInt(userId);
+            const userMessages = directMessages.get(uid);
+            if (userMessages && userMessages.length > 0) {
+                const lastMessage = userMessages[userMessages.length - 1];
+                const preview = lastMessage.text || lastMessage.content || 'Image';
+                return preview.length > 30 ? preview.substring(0, 30) + '...' : preview;
             }
-            
-            const lastMessage = userMessages[userMessages.length - 1];
-            const preview = lastMessage.text || 'Image';
-            return preview.length > 30 ? preview.substring(0, 30) + '...' : preview;
+            // Fallback to cached conversation metadata (loaded from /api/messages/conversations)
+            const dmMeta = dmUsers.get(uid);
+            if (dmMeta && dmMeta.lastMessage) {
+                const preview = dmMeta.lastMessage || 'Image';
+                return preview.length > 30 ? preview.substring(0, 30) + '...' : preview;
+            }
+            return 'Click to start conversation';
         }
         
         // Update DM list display
@@ -6559,10 +7086,12 @@
                 if (response.ok) {
                     const conversations = await response.json();
                     conversations.forEach(conv => {
-                        dmUsers.set(conv.id, { 
-                            id: conv.id, 
+                        dmUsers.set(conv.id, {
+                            id: conv.id,
                             username: conv.username,
-                            avatar: conv.avatar || null
+                            avatar: conv.avatar || null,
+                            lastMessage: conv.lastMessage || null,
+                            lastMessageTime: conv.lastMessageTime || null
                         });
                     });
                     updateDMList();
@@ -6649,10 +7178,27 @@
             const modal = document.getElementById('account-settings-modal');
             const nameInput = document.getElementById('account-username-input');
             const bioInput = document.getElementById('account-bio-input');
+            const bioEditor = document.getElementById('account-bio-editor');
             const avatarPrev = document.getElementById('account-avatar-preview');
             const bannerPrev = document.getElementById('account-banner-preview');
             if (nameInput && currentUser) nameInput.value = currentUser.username || '';
-            if (bioInput && currentUser) bioInput.value = currentUser.bio || '';
+            if (bioEditor && currentUser) {
+                // Convert stored plain/markdown text to simple HTML (reuse renderer but strip outer paragraphs for editing)
+                const rawBio = (currentUser.bio || '').replace(/\r\n?/g,'\n');
+                if(rawBio.includes('<')){
+                    bioEditor.innerHTML = sanitizeBioHtml(rawBio);
+                    bioInput.value = sanitizeBioHtml(rawBio);
+                } else {
+                    const rendered = renderBioMarkdown(rawBio);
+                    if (!rendered.trim()) bioEditor.innerHTML = '';
+                    else bioEditor.innerHTML = rendered
+                        .replace(/<p class=\"bio-p\">([\s\S]*?)<\/p>/g, '$1')
+                        .replace(/<h[3-5][^>]*>/g, '')
+                        .replace(/<\/h[3-5]>/g,'');
+                    bioInput.value = rawBio;
+                }
+                syncBioHidden();
+            }
             if (avatarPrev) {
                 avatarPrev.textContent = (currentUser?.username || 'A').charAt(0).toUpperCase();
                 if (currentUser?.avatar) {
@@ -6683,6 +7229,8 @@
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
             showAccountSection('profile');
+            // Defer compression to next frame so layout metrics are accurate
+            requestAnimationFrame(autoCompressBioToolbar);
         }
 
         function closeAccountSettings() {
@@ -6820,7 +7368,10 @@
             event.preventDefault();
             try {
                 const name = document.getElementById('account-username-input').value.trim();
-                const bio = document.getElementById('account-bio-input').value.trim();
+                // Pull HTML from editor, sanitize & compress to storage format
+                const editor = document.getElementById('account-bio-editor');
+                const bioRawHtml = editor ? editor.innerHTML : '';
+                const bio = sanitizeBioHtml(bioRawHtml).slice(0,1000);
                 const avatarPrev = document.getElementById('account-avatar-preview');
                 const previewDataUrl = avatarPrev?.dataset?.previewDataUrl;
         const bannerPrev = document.getElementById('account-banner-preview');
@@ -6898,6 +7449,57 @@
                 return false;
             }
         }
+
+        // ===== Bio Editor Helpers =====
+        // --- Bio Editor Helpers with selection preservation ---
+        let bioSavedRange = null;
+        function bioSaveSelection(){
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) bioSavedRange = sel.getRangeAt(0);
+        }
+        function bioRestoreSelection(){
+            if (bioSavedRange) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(bioSavedRange);
+            }
+        }
+        document.getElementById('account-bio-editor').addEventListener('mouseup', bioSaveSelection);
+        document.getElementById('account-bio-editor').addEventListener('keyup', bioSaveSelection);
+        function bioExec(cmd, val=null){ bioRestoreSelection(); document.execCommand(cmd,false,val); syncBioHidden(); bioSaveSelection(); }
+        function bioApplyHeading(level){ bioRestoreSelection(); document.execCommand('formatBlock', false, 'h'+level); syncBioHidden(); bioSaveSelection(); }
+        function bioWrap(type){ bioRestoreSelection(); if (type==='code') { document.execCommand('insertHTML', false, '<code>'+document.getSelection()+'</code>'); } syncBioHidden(); bioSaveSelection(); }
+        function bioInsertList(){ bioRestoreSelection(); document.execCommand('insertUnorderedList'); syncBioHidden(); bioSaveSelection(); }
+        function bioCenter(){ bioRestoreSelection(); document.execCommand('justifyCenter'); syncBioHidden(); bioSaveSelection(); }
+        function bioColor(){ /* removed */ }
+        function bioBg(){ /* removed */ }
+        function bioFontSize(sz){ if(!sz)return; document.execCommand('fontSize', false, '4');
+            // Replace <font size> with span + style for consistency
+            const editor=document.getElementById('account-bio-editor');
+            editor.querySelectorAll('font[size]').forEach(f=>{ const span=document.createElement('span'); span.style.fontSize=sz+'px'; span.innerHTML=f.innerHTML; f.replaceWith(span); });
+            syncBioHidden(); }
+        function bioClearFormatting(){ const ed=document.getElementById('account-bio-editor'); if(!ed) return; const text=ed.innerText; ed.innerHTML = text; syncBioHidden(); }
+    function syncBioHidden(){ const ed=document.getElementById('account-bio-editor'); const hidden=document.getElementById('account-bio-input'); if(ed&&hidden){ hidden.value = sanitizeBioHtml(ed.innerHTML).slice(0,1000); } }
+        // Keep toolbar on a single line by progressively compressing padding/font-size
+        function autoCompressBioToolbar(){
+            const tb = document.querySelector('.bio-editor-toolbar');
+            if(!tb) return;
+            tb.classList.remove('compressed-1','compressed-2','compressed-3');
+            // If wrapping occurred (height > 2 * base button height), start compressing
+            const fits = tb.scrollWidth <= tb.clientWidth && tb.offsetHeight < 60; // heuristic
+            if (fits) return;
+            tb.classList.add('compressed-1');
+            if(tb.scrollWidth <= tb.clientWidth) return;
+            tb.classList.add('compressed-2');
+            if(tb.scrollWidth <= tb.clientWidth) return;
+            tb.classList.add('compressed-3');
+        }
+        window.addEventListener('resize', () => { autoCompressBioToolbar(); });
+        // Tab inserts spaces
+        document.addEventListener('keydown', e => {
+            if (e.target && e.target.id === 'account-bio-editor' && e.key === 'Tab') { e.preventDefault(); document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;'); syncBioHidden(); }
+        });
+        // (Old sanitizeBioHtml replaced above with new preserving HTML) REMOVED legacy conversion
 
         // Members Panel Functions
         // Members panel state
@@ -7319,7 +7921,7 @@
                             chip.appendChild(label);
                             roleListEl.appendChild(chip);
                         });
-                        rolesWrapEl.style.display = 'block';
+                        rolesWrapEl.style.display = 'flex';
                         if (rolesSepEl) rolesSepEl.style.display = 'block';
                     }
                 }
@@ -7356,7 +7958,7 @@
                     }
                 }
                 if (bioEl && bioWrapEl) {
-                    bioEl.textContent = profile.bio || '';
+                    bioEl.innerHTML = renderBio(profile.bio || '');
                     bioWrapEl.style.display = profile.bio ? 'block' : 'none';
                 }
                 if (serverListEl) {
