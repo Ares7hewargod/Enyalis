@@ -893,6 +893,17 @@
             /* Remove separator line to avoid side lines extending past the rounded input */
             border-top: none;
         }
+        /* Typing indicators */
+        .typing-indicators-bar { display:flex; align-items:center; gap:8px; min-height:26px; padding:4px 2px 6px 2px; }
+        .typing-indicator { display:flex; align-items:center; gap:6px; background:#2f3136; border:1px solid #202225; padding:3px 10px 3px 6px; border-radius:20px; box-shadow:0 2px 4px rgba(0,0,0,0.35); animation: fadeIn .25s ease; font-size:12px; }
+        .typing-indicator-avatar { width:22px; height:22px; border-radius:50%; background:var(--brand-gradient); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#fff; }
+        .typing-dots { display:inline-flex; gap:3px; }
+        .typing-dots span { width:5px; height:5px; background:#b9bbbe; border-radius:50%; display:block; opacity:.35; animation: bounce 1s infinite ease-in-out; }
+        .typing-dots span:nth-child(2){ animation-delay:.2s; }
+        .typing-dots span:nth-child(3){ animation-delay:.4s; }
+        @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity:.35;} 30% { transform: translateY(-5px); opacity:1;} }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:translateY(0);} }
+        .typing-indicator.expiring { opacity:.4; transition:opacity .18s ease; }
 
         .message-input-container {
             background: #40444b;
@@ -1863,6 +1874,9 @@
     .profile-popover .role-chip-list.inline::-webkit-scrollbar { height: 6px; }
     .profile-popover .role-chip-list.inline::-webkit-scrollbar-track { background: transparent; }
     .profile-popover .role-chip-list.inline::-webkit-scrollbar-thumb { background: #202225; border-radius: 3px; }
+    /* Popover bio adopts full profile bio box styling */
+    .profile-popover #popover-bio-wrap { margin-top: 10px; }
+    .profile-popover #popover-profile-bio.profile-bio-box { max-height: 110px; }
 
         .profile-username {
             font-size: 20px;
@@ -2289,6 +2303,7 @@
             </div>
 
             <div class="message-input-area" id="message-input-area" style="display: none;">
+                <div id="typing-indicators" class="typing-indicators-bar"></div>
                 <div class="message-input-container">
                     <input type="file" class="file-input" id="image-input" accept="image/*" multiple>
                     <input type="text" class="message-input" id="message-input" placeholder="Message...">
@@ -2395,7 +2410,7 @@
                 <hr class="profile-section-separator" id="popover-roles-sep" style="display:none;" />
                 <div id="popover-bio-wrap" style="display:none;">
                     <div class="bio-label">Bio</div>
-                    <div class="profile-bio" id="popover-profile-bio"></div>
+                    <div class="profile-bio-box" id="popover-profile-bio"></div>
                 </div>
                 <div class="profile-servers" id="popover-profile-servers" style="display:none;">
                     <h4>Servers</h4>
@@ -3088,6 +3103,7 @@
                 if (currentChannel && parseInt(message.channelId) === parseInt(currentChannel.id)) {
                     console.log('Adding message to UI');
                     await addMessageToUI(message);
+                    try { removeTypingIndicator(message.userId || message.senderId); } catch(e){ /* ignore */ }
                 } else {
                     console.log('Message not for current channel or no current channel');
                     console.log('Message channel ID:', message.channelId, 'Current channel ID:', currentChannel?.id);
@@ -3096,6 +3112,9 @@
 
             // Attach edit/delete listeners after socket is ready
             attachEditDeleteSocketListeners();
+            // Typing indicator events
+            socket.on('user-typing', handleRemoteTyping);
+            socket.on('user-stop-typing', handleRemoteStopTyping);
             
             // Listen for friend request notifications
             socket.on('friend-request-received', (data) => {
@@ -3897,6 +3916,7 @@
                     messageInput.value = '';
                     imageInput.value = ''; // Clear selected images
                     clearImagePreviews(); // Clear preview area
+                    emitStopTyping();
                 } else {
                     const error = await response.text();
                     console.error('Failed to send message:', response.status, error);
@@ -4161,6 +4181,107 @@
             previewArea.style.display = 'none';
             previewContainer.innerHTML = '';
         }
+
+        // ==== Typing Indicator Logic ==== 
+        const remoteTypingUsers = new Map(); // userId -> { element, expiresAt }
+        const TYPING_TIMEOUT = 5000; // ms auto-expire
+        let lastTypingEmit = 0;
+        const localTypingState = { active:false, timer:null };
+        function emitTyping(){
+            if (!socket) return;
+            const now = Date.now();
+            if (now - lastTypingEmit < 1200) return; // throttle
+            lastTypingEmit = now;
+            if (currentView === 'dm' && currentDMUser) {
+                socket.emit('typing', { scope:'dm', recipientId: currentDMUser.id });
+            } else if (currentChannel) {
+                socket.emit('typing', { scope:'channel', channelId: currentChannel.id });
+            }
+        }
+        function emitStopTyping(){
+            if (!socket) return;
+            if (!localTypingState.active) return;
+            localTypingState.active = false;
+            if (currentView === 'dm' && currentDMUser) {
+                socket.emit('stop-typing', { scope:'dm', recipientId: currentDMUser.id });
+            } else if (currentChannel) {
+                socket.emit('stop-typing', { scope:'channel', channelId: currentChannel.id });
+            }
+        }
+        function handleLocalTypingInput(){
+            const input = document.getElementById('message-input');
+            if (!input) return;
+            if (input.value.trim()) {
+                if (!localTypingState.active) { localTypingState.active = true; emitTyping(); }
+                else emitTyping();
+                if (localTypingState.timer) clearTimeout(localTypingState.timer);
+                localTypingState.timer = setTimeout(()=>{ emitStopTyping(); }, 3500);
+            } else {
+                emitStopTyping();
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('message-input');
+            if (input){
+                input.addEventListener('input', handleLocalTypingInput);
+                input.addEventListener('blur', ()=> emitStopTyping());
+            }
+        });
+        function handleRemoteTyping(data){
+            if (!data || !data.userId || (currentUser && data.userId == currentUser.id)) return;
+            if (data.scope === 'channel') {
+                if (!currentChannel || parseInt(currentChannel.id) !== parseInt(data.channelId)) return;
+            } else if (data.scope === 'dm') {
+                if (!currentDMUser) return;
+                if (parseInt(data.userId) !== parseInt(currentDMUser.id) && parseInt(data.recipientId) !== parseInt(currentDMUser.id)) return;
+            }
+            addOrRefreshTypingIndicator(data.userId, data.username, data.avatar);
+        }
+        function handleRemoteStopTyping(data){
+            if (!data || !data.userId || (currentUser && data.userId == currentUser.id)) return;
+            if (data.scope === 'channel') {
+                if (!currentChannel || parseInt(currentChannel.id) !== parseInt(data.channelId)) return;
+            } else if (data.scope === 'dm') {
+                if (!currentDMUser) return;
+                if (parseInt(data.recipientId) !== parseInt(currentDMUser.id) && parseInt(data.userId) !== parseInt(currentDMUser.id)) return;
+            }
+            removeTypingIndicator(data.userId);
+        }
+        function addOrRefreshTypingIndicator(userId, username, avatar){
+            const bar = document.getElementById('typing-indicators');
+            if (!bar) return;
+            let entry = remoteTypingUsers.get(userId);
+            if (!entry){
+                const el = document.createElement('div');
+                el.className='typing-indicator';
+                el.dataset.userId = userId;
+                const av = document.createElement('div'); av.className='typing-indicator-avatar';
+                if (avatar){ av.style.backgroundImage = `url(${avatar})`; av.style.backgroundSize='cover'; av.style.backgroundPosition='center'; }
+                else { av.textContent = (username||'?').charAt(0).toUpperCase(); }
+                const dots = document.createElement('div'); dots.className='typing-dots'; dots.innerHTML='<span></span><span></span><span></span>';
+                el.appendChild(av); el.appendChild(dots);
+                bar.appendChild(el);
+                entry = { element: el, expiresAt: Date.now() + TYPING_TIMEOUT };
+                remoteTypingUsers.set(userId, entry);
+            } else {
+                entry.expiresAt = Date.now() + TYPING_TIMEOUT;
+                entry.element.classList.remove('expiring');
+            }
+        }
+        function removeTypingIndicator(userId){
+            const entry = remoteTypingUsers.get(userId);
+            if (!entry) return;
+            entry.element.classList.add('expiring');
+            setTimeout(()=>{ if (entry.element && entry.element.parentNode) entry.element.parentNode.removeChild(entry.element); },180);
+            remoteTypingUsers.delete(userId);
+        }
+        // Expire stale indicators
+        setInterval(()=>{
+            const now = Date.now();
+            for (const [uid, entry] of remoteTypingUsers.entries()){
+                if (now > entry.expiresAt){ removeTypingIndicator(uid); }
+            }
+        }, 1500);
 
         // Image modal functions
         function openImageModal(imageSrc) {

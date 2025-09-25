@@ -101,6 +101,50 @@ io.on('connection', (socket) => {
         socket.leave(`channel-${channelId}`);
         console.log(`User ${socket.username} left channel ${channelId}`);
     });
+
+    // Typing indicators
+    socket.on('typing', (data = {}) => {
+        try {
+            const { scope, channelId, recipientId } = data;
+            const payload = {
+                userId: socket.userId,
+                username: socket.username,
+                avatar: getUserById(socket.userId)?.avatar || null,
+                scope,
+                channelId: channelId || null,
+                recipientId: recipientId || null,
+                ts: Date.now()
+            };
+            if (scope === 'channel' && channelId) {
+                // Broadcast to channel excluding sender
+                socket.to(`channel-${channelId}`).emit('user-typing', payload);
+            } else if (scope === 'dm' && recipientId) {
+                // Send to recipient user room
+                socket.to(`user-${recipientId}`).emit('user-typing', payload);
+            }
+        } catch (e) {
+            console.warn('Typing event error:', e.message);
+        }
+    });
+
+    socket.on('stop-typing', (data = {}) => {
+        try {
+            const { scope, channelId, recipientId } = data;
+            const payload = {
+                userId: socket.userId,
+                scope,
+                channelId: channelId || null,
+                recipientId: recipientId || null
+            };
+            if (scope === 'channel' && channelId) {
+                socket.to(`channel-${channelId}`).emit('user-stop-typing', payload);
+            } else if (scope === 'dm' && recipientId) {
+                socket.to(`user-${recipientId}`).emit('user-stop-typing', payload);
+            }
+        } catch (e) {
+            console.warn('Stop typing event error:', e.message);
+        }
+    });
     
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.username} (${socket.id})`);
