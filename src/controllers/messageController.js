@@ -184,7 +184,7 @@ exports.sendMessage = async (req, res) => {
             const io = req.app.get('io');
             if (io) { io.to(`user-${recipientId}`).emit('new-direct-message', message); io.to(`user-${userId}`).emit('new-direct-message', message); }
             res.status(201).json(message);
-        } else if (type === 'channel' && channelId) {
+    } else if (type === 'channel' && channelId) {
             // Send channel message
             console.log('Sending channel message:', { channelId, userId, text });
             let channel;
@@ -219,6 +219,55 @@ exports.sendMessage = async (req, res) => {
             if (USE_DB === 'true' && messageRepo) {
                 const dbMsg = await messageRepo.createChannelMessage({ channelId: parseFloat(channelId), userId, content: text || '' });
                 const message = { id: dbMsg.id, channelId: dbMsg.channel_id, userId: dbMsg.user_id, username, content: dbMsg.content, attachments, timestamp: dbMsg.created_at, edited: dbMsg.edited, editedAt: dbMsg.edited_at, avatar: userAvatar || null };
+                // Parse mentions: syntax !<prefix>, suggest list handled on frontend; here we resolve exact mentions in content: !username
+                try {
+                    const { getPool } = require('../db');
+                    const pool = getPool();
+                    const mentionMatches = (text || '').match(/!(\w{1,50})/g) || [];
+                    const uniqueNames = Array.from(new Set(mentionMatches.map(m => m.slice(1).toLowerCase())));
+                    const mentionedUsers = [];
+                    for (const name of uniqueNames) {
+                        const { rows } = await pool.query('SELECT id, username FROM users WHERE LOWER(username) = $1 LIMIT 1', [name]);
+                        if (rows.length) mentionedUsers.push(rows[0]);
+                    }
+                    // Insert mention records and notifications (mention type)
+                    const serverIdForChannel = channel.serverId || channel.server_id;
+                    for (const mu of mentionedUsers) {
+                        try { await pool.query('INSERT INTO channel_message_mentions(message_id, mentioned_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [dbMsg.id, mu.id]); } catch {}
+                        try {
+                            await pool.query('INSERT INTO notifications(user_id, server_id, channel_id, message_id, type, read) VALUES ($1,$2,$3,$4,\'mention\', false)', [mu.id, serverIdForChannel, parseFloat(channelId), dbMsg.id]);
+                        } catch {}
+                    }
+                    // Create general unread notifications for channel members except sender (message type)
+                    try {
+                        const { rows: memRows } = await pool.query('SELECT user_id FROM server_members WHERE server_id = $1', [serverIdForChannel]);
+                        for (const r of memRows) {
+                            if (r.user_id === userId) continue; // don't notify self
+                            await pool.query('INSERT INTO notifications(user_id, server_id, channel_id, message_id, type, read) VALUES ($1,$2,$3,$4,\'message\', false)', [r.user_id, serverIdForChannel, parseFloat(channelId), dbMsg.id]);
+                        }
+                        // Emit per-user channel notifications instantly (mention overrides type)
+                        try {
+                            const io = req.app.get('io');
+                            if (io) {
+                                const mentionedSet = new Set(mentionedUsers.map(u=>u.id));
+                                for (const r of memRows) {
+                                    if (r.user_id === userId) continue;
+                                    const type = mentionedSet.has(r.user_id) ? 'mention' : 'message';
+                                    io.to(`user-${r.user_id}`).emit('channel-notification', { serverId: serverIdForChannel, channelId: parseFloat(channelId), type, messageId: dbMsg.id });
+                                }
+                            }
+                        } catch {}
+                    } catch (e) { console.warn('notification insert failed', e.code || e.message); }
+                    // Emit socket events to mentioned users for immediate red dot
+                    try {
+                        const io = req.app.get('io');
+                        if (io) {
+                            for (const mu of mentionedUsers) io.to(`user-${mu.id}`).emit('mention', { channelId: parseFloat(channelId), serverId: channel.serverId || channel.server_id, messageId: dbMsg.id });
+                        }
+                    } catch {}
+                } catch (e) {
+                    console.warn('mention/notification processing failed:', e.message);
+                }
                 const io = req.app.get('io');
                 if (io) io.to(`channel-${channelId}`).emit('new-message', message);
                 return res.status(201).json(message);

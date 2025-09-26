@@ -22,6 +22,7 @@ const channelRoutes = require('./routes/channelRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const serverRoutes = require('./routes/serverRoutes');
 const friendRoutes = require('./routes/friendRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { getUserById } = require('./controllers/userController');
 
 // Increase JSON/urlencoded body limits to allow data URL images for icons/avatars
@@ -39,6 +40,7 @@ app.use('/api/channels', channelRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/friends', friendRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 

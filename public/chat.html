@@ -69,6 +69,9 @@
             gap: 12px; /* Visual space between each server bubble */
         }
 
+        /* Wrap each server icon to host background indicators behind it */
+        .server-item { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+
         .server-icon {
             width: 48px;
             height: 48px;
@@ -82,7 +85,8 @@
             font-weight: bold;
             font-size: 18px;
             line-height: 1;
-            position: relative;
+            position: relative; /* sits above background line */
+            z-index: 1;
             overflow: hidden;
         }
 
@@ -127,6 +131,17 @@
             background-size: 110%; /* gentle zoom to indicate selection */
             box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 0 16px var(--brand-glow);
         }
+
+    /* Server notification indicators (white line behind the icon) */
+    /* Server-level notification dots (wrapper-level to avoid clipping) */
+    .server-item .unread-bubble,
+    .server-item .mention-bubble { position:absolute; width: 12px; height: 12px; border-radius: 50%; display:none; z-index: 4; pointer-events: none; }
+    /* Top-left white dot for any unread (half on/off) */
+    .server-item .unread-bubble { left:-2px; top:-2px; background:#ffffff; border: 2px solid #202225; }
+    .server-item.has-unread .unread-bubble { display:block; }
+    /* Bottom-right red dot for mentions */
+    .server-item .mention-bubble { right:-2px; bottom:-2px; background:#ff2241; border: 2px solid #202225; }
+    .server-item.has-mention .mention-bubble { display:block; }
 
         /* Hover animation for image icons (unselected) */
         .server-icon.has-image:not(.active):hover {
@@ -225,6 +240,39 @@
             overflow-y: auto;
             padding: 16px 8px;
         }
+
+        /* Collapse/expand for the channels (middle-left) panel */
+        .channel-panel { transition: width 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .channel-panel.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; }
+        .channel-panel.collapsed * { pointer-events: none; }
+
+        /* Toggle button in chat header (top-left of center area) */
+        .channels-toggle-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: transparent;
+            color: inherit;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-right: 8px;
+            box-shadow: none;
+        }
+        .channels-toggle-btn:hover { box-shadow: none; }
+        .channels-toggle-btn .arrow {
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-size: 14px;
+            line-height: 1;
+            background: var(--brand-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+        .channels-toggle-btn.collapsed .arrow { transform: rotate(180deg); }
 
         .channel-category {
             color: #8e9297;
@@ -391,7 +439,16 @@
             font-size: 11px;
             margin-left: auto;
             font-weight: bold;
+            display: none; /* hidden by default, shown by JS when needed */
         }
+        .badge-mention { background: #ff2241 !important; }
+        /* White dot for regular unread messages (no mentions) */
+        .channel-item.has-unread { position: relative; }
+        .channel-item.has-unread::after { content: ''; position:absolute; right: 8px; width:8px; height:8px; background:#ffffff; border-radius:50%; top: 50%; transform: translateY(-50%); box-shadow: 0 0 0 2px rgba(0,0,0,0.2); }
+
+        /* Mention highlighting in message text */
+    .message-text .mention { color: #ff2241; font-weight: 700; }
+    .message-text .mention-me { color: #ff2241; font-weight: 700; background: none; padding: 0; border-radius: 0; }
 
         .user-area {
             height: 52px;
@@ -763,6 +820,20 @@
             padding: 2px 0;
         }
 
+        /* Personal message alignment options */
+        .message.align-right { flex-direction: row-reverse; }
+        .message.align-right .message-avatar { margin-right: 0; margin-left: 16px; }
+        .message.align-right .message-content { text-align: right; }
+    .message.align-right .message-header { justify-content: flex-start; }
+    /* Place actions on the far left, then a flex spacer to push name/time to right edge */
+    .message.align-right .message-header .message-actions { order: 0; }
+    .message.align-right .message-header .message-header-spacer { order: 1; display: block; flex: 1 1 auto; }
+    .message.align-right .message-header .message-timestamp { order: 2; }
+    .message.align-right .message-header .message-author { order: 3; }
+    /* Mirror the dropdown to open to the left when actions are on the left */
+    .message.align-right .message-header .message-actions .message-menu { right: auto !important; left: 0; transform-origin: top left; }
+        .message.align-right .message-attachment { text-align: right; }
+
         .message:hover {
             background: rgba(4, 4, 5, 0.07);
             margin: 0 -16px 16px;
@@ -858,6 +929,17 @@
         .message-edited-indicator { color:#8e9297; font-size:11px; font-weight:400; }
         .message-content.deleted .message-edited-indicator { display:none; }
 
+        /* Flash highlight for the message that triggered a notification (subtle) */
+        @keyframes flashHighlight {
+            0% { background-color: transparent; }
+            15% { background-color: rgba(255, 255, 255, 0.20); }
+            100% { background-color: transparent; }
+        }
+        .message-content.flash-once {
+            animation: flashHighlight 800ms ease-out 1;
+            border-radius: 8px;
+        }
+
         /* Image modal */
         .image-modal {
             display: none;
@@ -893,6 +975,15 @@
             /* Remove separator line to avoid side lines extending past the rounded input */
             border-top: none;
         }
+        /* Mention autocomplete dropdown */
+    .mention-suggest { position:absolute; left: 0; top: 0; background:#40444b; border:1px solid #303338; border-radius:8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); min-width: 300px; max-width: 100%; max-height: 260px; overflow-y: auto; z-index: 250; display:none; font-size: 14px; }
+    .message-input-container { position: relative; }
+    .mention-suggest::after { content:''; position:absolute; left:16px; bottom:-8px; width:16px; height:16px; background:#40444b; border-left:1px solid #303338; border-bottom:1px solid #303338; transform: rotate(45deg); border-bottom-left-radius: 3px; box-shadow: 2px 2px 4px rgba(0,0,0,0.15); }
+    .mention-suggest .item { display:flex; align-items:center; gap:12px; padding:10px 12px; cursor:pointer; }
+    .mention-suggest .item:hover, .mention-suggest .item.active { background:#393c43; }
+    .mention-suggest .avatar { width:32px; height:32px; border-radius:50%; background: var(--brand-gradient); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:14px; }
+    .mention-suggest .name { color:#e8eaed; font-size:15px; font-weight:600; }
+    .mention-suggest .role { margin-left:auto; color:#a0a4a8; font-size:12.5px; }
         /* Typing indicators */
         .typing-indicators-bar { display:flex; align-items:center; gap:8px; min-height:26px; padding:4px 2px 6px 2px; }
         .typing-indicator { display:flex; align-items:center; gap:6px; background:#2f3136; border:1px solid #202225; padding:3px 10px 3px 6px; border-radius:20px; box-shadow:0 2px 4px rgba(0,0,0,0.35); animation: fadeIn .25s ease; font-size:12px; }
@@ -1029,6 +1120,10 @@
             justify-content: flex-end;
             margin-top: 24px;
         }
+
+        /* Role Edit Modal */
+        .role-edit-modal { z-index: 1100; }
+        .role-edit-modal .modal-content { width: 460px; max-width: 92vw; }
 
         .btn {
             padding: 10px 24px;
@@ -2285,6 +2380,7 @@
         <!-- Chat Area -->
         <div class="chat-area" id="chat-area">
             <div class="chat-header">
+                <button class="channels-toggle-btn" id="channels-toggle" onclick="toggleChannelsPanel()" title="Toggle Channels"><span class="arrow">◄</span></button>
                 <span class="channel-icon" id="header-icon">#</span>
                 <span class="channel-name" id="current-channel-name">Welcome</span>
                 <span class="channel-info" id="current-channel-info">Select a server to get started</span>
@@ -2320,6 +2416,7 @@
             <div class="friends-main-area" id="friends-main-area" style="display: none;">
                 <div class="friends-container">
                     <div class="friends-header-main">
+                        <button class="channels-toggle-btn" id="channels-toggle-friends" onclick="toggleChannelsPanel()" title="Toggle Channels"><span class="arrow">◄</span></button>
                         <h2>Friends</h2>
                         <div class="friends-header-subtitle">Manage your connections and discover new friends</div>
                     </div>
@@ -2643,6 +2740,7 @@
                         <button class="settings-nav-btn" data-tab="roles" onclick="switchServerSettingsTab('roles')">Roles</button>
                         <button class="settings-nav-btn" data-tab="kick" onclick="switchServerSettingsTab('kick')">Kick</button>
                         <button class="settings-nav-btn" data-tab="admins" onclick="switchServerSettingsTab('admins')">Admins</button>
+                        <button class="settings-nav-btn" data-tab="voice" onclick="switchServerSettingsTab('voice')">Voice & Video</button>
                         <div style="height:8px;"></div>
                         <button class="settings-nav-btn danger-link" data-tab="delete" onclick="switchServerSettingsTab('delete')">Delete Server</button>
                     </nav>
@@ -2735,6 +2833,12 @@
                         <p id="admins-permission-note" style="color: #b9bbbe; font-size: 12px; margin-top: 8px;"></p>
                     </div>
 
+                    <!-- Voice & Video Tab (placeholder) -->
+                    <div id="voice-tab" class="tab-content">
+                        <h3>Voice & Video</h3>
+                        <p style="color:#b9bbbe;">Coming soon. Configure voice channels, input/output devices, and video options for this server here.</p>
+                    </div>
+
                     <!-- Delete Server Tab -->
                     <div id="delete-tab" class="tab-content">
                         <div class="danger-panel">
@@ -2752,10 +2856,30 @@
     </div>
 
     <!-- Account Settings Modal -->
+    <!-- Role Edit Modal -->
+    <div id="role-edit-modal" class="modal role-edit-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">Edit Role</div>
+            <div class="form-group">
+                <label class="form-label" for="role-edit-name">Role Name</label>
+                <input type="text" id="role-edit-name" class="form-input" placeholder="Role name" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="role-edit-color">Role Color</label>
+                <input type="color" id="role-edit-color" class="form-input" />
+                <div class="form-help">Pick a color to tint usernames and role chips.</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeRoleEditModal()">Cancel</button>
+                <button class="btn" onclick="submitRoleEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <div id="account-settings-modal" class="modal" style="display:none;">
         <div class="modal-content" style="width: 760px; max-width: 96vw; height: 80vh; max-height: 90vh; display:flex; flex-direction:column; position:relative;">
             <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; gap:12px;">
-                <span style="flex:1;">Account Settings</span>
+                <span style="flex:1;">Settings</span>
                 <div style="display:flex; gap:8px;">
                     <button class="btn btn-primary" onclick="document.getElementById('account-profile-form').requestSubmit();" style="min-width:110px;">Save</button>
                     <button class="btn btn-secondary" onclick="closeAccountSettings()" style="min-width:80px;">Close</button>
@@ -2763,9 +2887,11 @@
             </div>
             <div class="account-settings-body" style="display:flex; gap:16px; flex:1 1 auto; min-height:0; overflow:hidden;">
                 <div style="flex: 0 0 240px; border-right: 1px solid var(--border-color); padding-right: 12px; overflow:auto;">
-                    <div style="color:#b9bbbe; font-size:12px; margin-bottom:6px;">USER SETTINGS</div>
+                    <div style="color:#b9bbbe; font-size:12px; margin-bottom:6px;">ACCOUNT</div>
                     <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('profile')">Profile</button>
-                    <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('voice')">Voice & Audio</button>
+                    <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('baby')">Baby Settings</button>
+                    <div style="color:#b9bbbe; font-size:12px; margin:10px 0 6px;">SERVER SETTINGS</div>
+                    <button class="friends-nav-btn-main" style="width:100%; text-align:left;" onclick="showAccountSection('voice')">Voice & Video</button>
                 </div>
                 <div id="account-settings-content" style="flex:1 1 auto; overflow:auto; padding-right: 4px;">
                     <div id="account-section-profile">
@@ -2815,8 +2941,18 @@
                         </form>
                     </div>
                     <div id="account-section-voice" style="display:none;">
-                        <h3 style="margin: 4px 0 12px 0;">Voice & Audio</h3>
+                        <h3 style="margin: 4px 0 12px 0;">Voice & Video</h3>
                         <p style="color:#b9bbbe;">Coming soon. Configure microphone, input/output devices, and push-to-talk here.</p>
+                    </div>
+                    <div id="account-section-baby" style="display:none;">
+                        <h3 style="margin: 4px 0 12px 0;">Baby Settings</h3>
+                        <div style="margin-top:8px; max-width:520px;">
+                            <label class="form-label" for="msg-align-select">Message Alignment</label>
+                            <select id="msg-align-select" class="form-input" style="max-width: 240px;">
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2857,6 +2993,59 @@
         // Global variables
         let socket;
         let currentUser = null;
+    // Notifications state
+    let notifByChannel = new Map(); // channelId -> { server_id, unread_messages, unread_mentions }
+    let latestNotifMessageByChannel = new Map(); // channelId -> last messageId that caused notif
+
+        // Remember last channel per server (persisted in localStorage)
+        const LAST_CH_KEY = 'lastChannelByServer';
+        function loadLastChannelMap() {
+            try {
+                const raw = localStorage.getItem(LAST_CH_KEY);
+                if (!raw) return new Map();
+                const obj = JSON.parse(raw);
+                const m = new Map();
+                Object.entries(obj).forEach(([sid, cid]) => m.set(parseFloat(sid), parseFloat(cid)));
+                return m;
+            } catch { return new Map(); }
+        }
+        function saveLastChannelMap(map) {
+            try {
+                const obj = {};
+                for (const [sid, cid] of map.entries()) obj[String(sid)] = cid;
+                localStorage.setItem(LAST_CH_KEY, JSON.stringify(obj));
+            } catch {}
+        }
+        
+        // ===== Channels Panel Collapse State =====
+        const CHANNELS_COLLAPSE_KEY = 'channels_panel_collapsed';
+        function getChannelsPanelCollapsed(){ return localStorage.getItem(CHANNELS_COLLAPSE_KEY) === '1'; }
+        function setChannelsPanelCollapsed(v){ localStorage.setItem(CHANNELS_COLLAPSE_KEY, v ? '1' : '0'); }
+        function applyChannelsPanelState(){
+            const panel = document.querySelector('.channel-panel');
+            const btn = document.getElementById('channels-toggle');
+            const btnFriends = document.getElementById('channels-toggle-friends');
+            if (!panel) return;
+            const collapsed = getChannelsPanelCollapsed();
+            panel.classList.toggle('collapsed', collapsed);
+            if (btn) btn.classList.toggle('collapsed', collapsed);
+            if (btnFriends) btnFriends.classList.toggle('collapsed', collapsed);
+        }
+        function toggleChannelsPanel(){
+            const collapsed = !getChannelsPanelCollapsed();
+            setChannelsPanelCollapsed(collapsed);
+            applyChannelsPanelState();
+        }
+        let lastChannelByServer = loadLastChannelMap();
+        function getLastChannelForServer(serverId) {
+            return lastChannelByServer.get(parseFloat(serverId));
+        }
+        function setLastChannelForServer(serverId, channelId) {
+            const sid = parseFloat(serverId);
+            const cid = parseFloat(channelId);
+            lastChannelByServer.set(sid, cid);
+            saveLastChannelMap(lastChannelByServer);
+        }
         let currentServer = null;
         let currentChannel = null;
         let userServers = [];
@@ -2877,7 +3066,7 @@
     // Cache of server roles: serverId -> { [roleId]: role }
     const serverRolesCache = new Map();
 
-        async function loadServerMembersCache(serverId) {
+    async function loadServerMembersCache(serverId) {
             try {
                 const resp = await fetch(`/api/servers/${serverId}/members`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -2890,7 +3079,7 @@
                 const data = await resp.json();
                 const map = new Map();
                 (data.members || []).forEach(m => {
-                    map.set(parseInt(m.userId), { role: m.role, roleId: m.roleId ?? null });
+                    map.set(parseInt(m.userId), { role: m.role, roleId: m.roleId ?? null, username: m.username, avatar: m.avatar || null });
                 });
                 currentServerMembersMap = map;
                 currentServerMembersCacheServerId = parseFloat(serverId);
@@ -2909,7 +3098,10 @@
                 if (!resp.ok) { serverRolesCache.delete(parseFloat(serverId)); return; }
                 const data = await resp.json();
                 const map = {};
-                (data.roles || []).forEach(r => { map[r.id] = r; });
+                (data.roles || []).forEach(r => {
+                    if (typeof r.isDefault === 'undefined' && typeof r.is_default !== 'undefined') r.isDefault = !!r.is_default;
+                    map[r.id] = r;
+                });
                 serverRolesCache.set(parseFloat(serverId), map);
             } catch {
                 serverRolesCache.delete(parseFloat(serverId));
@@ -3042,6 +3234,8 @@
             // Initialize Socket.IO and load data
             initializeSocket();
             loadUserServers();
+            // Fetch notification summary in parallel
+            fetchNotificationSummary().catch(() => {});
             // Initialize with friends view
             showFriendsMain();
             loadDMConversations();
@@ -3058,12 +3252,14 @@
                 window.history.replaceState({}, document.title, newUrl);
             }
             
-            // Set up message input event listener
+            // Set up message input event listener (send)
             document.getElementById('message-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
             });
+            // Mention autocomplete bindings
+            setupMentionAutocomplete();
             // Click anywhere on the container to focus the text input
             const msgContainer = document.querySelector('.message-input-container');
             const msgInput = document.getElementById('message-input');
@@ -3078,6 +3274,9 @@
             
             // Set up image input change listener
             document.getElementById('image-input').addEventListener('change', handleImageSelection);
+
+            // Restore channels panel collapsed state
+            applyChannelsPanelState();
         });
 
         function initializeSocket() {
@@ -3115,6 +3314,32 @@
             // Typing indicator events
             socket.on('user-typing', handleRemoteTyping);
             socket.on('user-stop-typing', handleRemoteStopTyping);
+
+            // Channel notification events
+            socket.on('channel-notification', ({ serverId, channelId, type, messageId }) => {
+                try {
+                    const cid = parseFloat(channelId);
+                    const sid = parseFloat(serverId);
+                    const cur = notifByChannel.get(cid) || { server_id: sid, unread_messages: 0, unread_mentions: 0 };
+                    if (type === 'mention') cur.unread_mentions++; else cur.unread_messages++;
+                    cur.server_id = sid;
+                    notifByChannel.set(cid, cur);
+                    if (messageId) latestNotifMessageByChannel.set(cid, messageId);
+                    updateServerBadges();
+                    updateChannelBadges();
+                } catch (e) { console.warn('channel-notification handler error', e); }
+            });
+            socket.on('channel-read', ({ channelId }) => {
+                try {
+                    const cid = parseFloat(channelId);
+                    if (notifByChannel.has(cid)) {
+                        notifByChannel.set(cid, { ...notifByChannel.get(cid), unread_messages: 0, unread_mentions: 0 });
+                        latestNotifMessageByChannel.delete(cid);
+                        updateServerBadges();
+                        updateChannelBadges();
+                    }
+                } catch (e) { console.warn('channel-read handler error', e); }
+            });
             
             // Listen for friend request notifications
             socket.on('friend-request-received', (data) => {
@@ -3525,6 +3750,9 @@
                 console.log(`Server ${index} keys:`, Object.keys(server));
                 console.log(`Server ${index} id:`, server.id, typeof server.id);
                 
+                const wrap = document.createElement('div');
+                wrap.className = 'server-item';
+                wrap.dataset.serverId = server.id;
                 const serverIcon = document.createElement('div');
                 serverIcon.className = 'server-icon';
                 serverIcon.dataset.serverId = server.id;
@@ -3547,9 +3775,19 @@
                     serverIcon.classList.remove('has-image');
                     serverIcon.textContent = server.name.charAt(0).toUpperCase();
                 }
+                // Notification adornments (wrapper-level to avoid clipping)
+                const unreadBubble = document.createElement('div');
+                unreadBubble.className = 'unread-bubble';
+                const mentionBubble = document.createElement('div');
+                mentionBubble.className = 'mention-bubble';
+                wrap.appendChild(unreadBubble);
+                wrap.appendChild(mentionBubble);
+                wrap.appendChild(serverIcon);
                 
-                serversContainer.appendChild(serverIcon);
+                serversContainer.appendChild(wrap);
             });
+            // After rendering, apply badges
+            updateServerBadges();
         }
 
         // Server selection functions
@@ -3587,7 +3825,9 @@
             
             // Update UI
             document.querySelector('.server-icon.active')?.classList.remove('active');
-            document.querySelector(`[data-server-id="${server.id}"]`)?.classList.add('active');
+            // Prefer icon inside wrapper that matches server id
+            const iconForServer = document.querySelector(`.server-item[data-server-id="${server.id}"] .server-icon`);
+            if (iconForServer) iconForServer.classList.add('active');
             
             // Hide friends UI and show messages area
             document.getElementById('friends-main-area').style.display = 'none';
@@ -3640,11 +3880,20 @@
                     const data = await response.json();
                     console.log('Received channels:', data);
                     displayChannels(data.channels);
-                    
-                    // Auto-select first channel
-                    if (data.channels.length > 0) {
-                        console.log('Auto-selecting first channel:', data.channels[0]);
-                        await selectChannel(data.channels[0]);
+                    // Update channel badges with any existing unread counts
+                    updateChannelBadges();
+
+                    // Pick last visited channel for this server if available/valid, else first text channel
+                    const lastCid = getLastChannelForServer(serverId);
+                    const textChannels = (data.channels || []).filter(ch => ch.type === 'text');
+                    let target = null;
+                    if (lastCid) {
+                        target = textChannels.find(ch => parseFloat(ch.id) === parseFloat(lastCid)) || null;
+                    }
+                    if (!target && textChannels.length > 0) target = textChannels[0];
+                    if (target) {
+                        console.log('Selecting remembered channel:', target);
+                        await selectChannel(target);
                     }
                 } else {
                     console.error('Failed to load channels:', response.status, await response.text());
@@ -3672,6 +3921,11 @@
                     <span class="channel-icon">#</span>
                     ${channel.name}
                 `;
+                // Badge for unread count
+                const badge = document.createElement('span');
+                badge.className = 'badge';
+                badge.style.display = 'none';
+                channelItem.appendChild(badge);
                 
                 textChannelsList.appendChild(channelItem);
             });
@@ -3700,9 +3954,51 @@
             if (socket) {
                 socket.emit('join-channel', channel.id);
             }
+
+            // Persist last channel for this server
+            if (currentServer && currentServer.id) {
+                setLastChannelForServer(currentServer.id, channel.id);
+            }
             
             // Load messages
             await loadMessages(channel.id);
+
+            // If there were notifications, flash the latest notified message (or fallback to latest message)
+            try {
+                const cid = parseFloat(channel.id);
+                const v = notifByChannel.get(cid);
+                const hadUnread = !!(v && ((v.unread_messages || 0) + (v.unread_mentions || 0) > 0));
+                const lastMsgId = latestNotifMessageByChannel.get(cid);
+                if (lastMsgId || hadUnread) {
+                    requestAnimationFrame(() => {
+                        let msgEl = null;
+                        if (lastMsgId) {
+                            msgEl = document.querySelector(`.message[data-message-id="${lastMsgId}"] .message-content`);
+                        }
+                        if (!msgEl && hadUnread) {
+                            const lastMsg = document.querySelector('#messages-container .message:last-of-type .message-content');
+                            if (lastMsg) msgEl = lastMsg;
+                        }
+                        if (msgEl) {
+                            msgEl.classList.add('flash-once');
+                            setTimeout(() => msgEl.classList.remove('flash-once'), 1400);
+                        }
+                    });
+                }
+            } catch {}
+
+            // Mark notifications as read for this channel
+            try {
+                // Optimistically clear local counts to avoid momentary badge flash
+                const cid = parseFloat(channel.id);
+                if (notifByChannel.has(cid)) {
+                    notifByChannel.set(cid, { ...notifByChannel.get(cid), unread_messages: 0, unread_mentions: 0 });
+                    latestNotifMessageByChannel.delete(cid);
+                    updateServerBadges();
+                    updateChannelBadges();
+                }
+                await markChannelRead(channel.id);
+            } catch (e) { console.warn('markChannelRead failed', e); }
         }
 
         // Load messages for a channel
@@ -3778,6 +4074,193 @@
             scrollToBottom();
         }
 
+        // === Mention Autocomplete ===
+        let mentionUI = null;
+        let mentionActiveIndex = -1;
+        let mentionCandidates = [];
+        let mentionToken = null; // { start, end, text }
+
+        // Helper: role display name (UI shows !everyone instead of @everyone)
+        function getRoleDisplayName(role) {
+            if (!role) return '';
+            // Default role should be addressed with token !everyone and display name "everyone"
+            return role.isDefault ? 'everyone' : (role.name || '');
+        }
+
+        function setupMentionAutocomplete() {
+            const input = document.getElementById('message-input');
+            // Create dropdown element once
+            mentionUI = document.createElement('div');
+            mentionUI.className = 'mention-suggest';
+            document.body.appendChild(mentionUI);
+
+            input.addEventListener('input', onMentionInputChange);
+            input.addEventListener('keydown', onMentionKeyDown);
+            input.addEventListener('blur', () => setTimeout(hideMention, 120));
+            const rePos = () => { if (mentionUI && mentionUI.style.display === 'block') positionMentionDropdown(); };
+            window.addEventListener('resize', rePos);
+            window.addEventListener('scroll', rePos, true);
+        }
+        
+        function positionMentionDropdown() {
+            const container = document.querySelector('.message-input-container');
+            if (!container || !mentionUI) return;
+            const cRect = container.getBoundingClientRect();
+            const pageLeft = cRect.left + window.scrollX;
+            const pageTop = cRect.top + window.scrollY;
+            const gap = 8; // space between dropdown and input container
+            const inset = 0; // can add left/right inset if you want slight padding
+            mentionUI.style.width = `${cRect.width - inset * 2}px`;
+            mentionUI.style.left = `${pageLeft + inset}px`;
+            const h = mentionUI.offsetHeight || 200; // fallback to ~5 rows height
+            mentionUI.style.top = `${pageTop - (h + gap)}px`;
+        }
+
+        function onMentionInputChange(e) {
+            const input = e.target;
+            const value = input.value;
+            const caret = input.selectionStart || value.length;
+            // Find the last token starting with ! before caret (word boundary or start)
+            const before = value.slice(0, caret);
+            const match = /(^|\s)!(\w{0,50})$/.exec(before);
+            if (!match) { hideMention(); return; }
+            const query = match[2] || '';
+            mentionToken = { start: caret - query.length - 1, end: caret, text: query };
+            // Build candidates from current server members
+            if (!currentServer || !currentServer.id) { hideMention(); return; }
+            if (!currentServerMembersMap || currentServerMembersCacheServerId !== parseFloat(currentServer.id)) { /* we rely on prior cache loads */ }
+            const all = [];
+            // Users
+            for (const [uid, info] of currentServerMembersMap.entries()) {
+                if (!info || !info.username) continue;
+                all.push({ kind: 'user', id: uid, username: info.username, avatar: info.avatar || null, roleId: info.roleId || null, role: info.role || 'member' });
+            }
+            // Roles (from cache if available)
+            const rolesMap = serverRolesCache.get(parseFloat(currentServer.id)) || {};
+            for (const rid in rolesMap) {
+                const r = rolesMap[rid];
+                if (!r) continue;
+                if (typeof r.isDefault === 'undefined' && typeof r.is_default !== 'undefined') r.isDefault = !!r.is_default;
+                const disp = getRoleDisplayName(r);
+                if (!disp) continue;
+                all.push({ kind: 'role', id: r.id, name: disp, color: r.color || '#faa61a', isDefault: !!r.isDefault });
+            }
+            const q = query.toLowerCase();
+            mentionCandidates = all
+                .filter(item => {
+                    const nm = item.kind === 'user' ? item.username : item.name;
+                    return q.length === 0 || String(nm).toLowerCase().includes(q);
+                })
+                .sort((a, b) => {
+                    // simple heuristic: startsWith first, then includes, then alpha; users before roles
+                    const aName = a.kind === 'user' ? a.username : a.name;
+                    const bName = b.kind === 'user' ? b.username : b.name;
+                    const aStarts = String(aName).toLowerCase().startsWith(q) ? 0 : 1;
+                    const bStarts = String(bName).toLowerCase().startsWith(q) ? 0 : 1;
+                    if (aStarts !== bStarts) return aStarts - bStarts;
+                    if (a.kind !== b.kind) return a.kind === 'user' ? -1 : 1;
+                    return String(aName).localeCompare(String(bName));
+                })
+                .slice(0, 50);
+            if (mentionCandidates.length === 0) { hideMention(); return; }
+            renderMentionList();
+            mentionActiveIndex = 0;
+            highlightMentionActive();
+            // Show first so we can measure height, then position
+            showMention();
+        }
+
+        function renderMentionList() {
+            mentionUI.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            mentionCandidates.forEach((u, idx) => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.dataset.index = idx;
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                const label = document.createElement('div');
+                label.className = 'name';
+                const meta = document.createElement('div');
+                meta.className = 'role';
+
+                if (u.kind === 'user') {
+                    if (u.avatar) {
+                        avatar.style.backgroundImage = `url(${u.avatar})`;
+                        avatar.style.backgroundSize = 'cover';
+                        avatar.style.backgroundPosition = 'center';
+                        avatar.textContent = '';
+                    } else {
+                        avatar.textContent = (u.username || '?').charAt(0).toUpperCase();
+                    }
+                    label.textContent = u.username;
+                    meta.textContent = u.role === 'owner' ? 'Owner' : u.role === 'admin' ? 'Admin' : '';
+                } else {
+                    // role
+                    avatar.textContent = '#';
+                    avatar.style.background = 'linear-gradient(135deg, #ff6464, #ffa94d)';
+                    label.textContent = u.name;
+                    meta.textContent = 'Role';
+                }
+
+                item.appendChild(avatar);
+                item.appendChild(label);
+                item.appendChild(meta);
+                item.addEventListener('mouseenter', () => { mentionActiveIndex = idx; highlightMentionActive(); });
+                item.addEventListener('mousedown', (ev) => {
+                    ev.preventDefault();
+                    const nm = u.kind === 'user' ? u.username : u.name;
+                    applyMention(nm);
+                });
+                frag.appendChild(item);
+            });
+            mentionUI.appendChild(frag);
+        }
+
+        function showMention() {
+            mentionUI.style.display = 'block';
+            // Position on next frame so offsetHeight is correct and avoid initial overlap
+            requestAnimationFrame(() => {
+                positionMentionDropdown();
+                // Reposition again shortly to account for async image/font sizing
+                setTimeout(positionMentionDropdown, 0);
+            });
+        }
+        function hideMention() { mentionUI.style.display = 'none'; mentionActiveIndex = -1; mentionCandidates = []; mentionToken = null; }
+        function highlightMentionActive() {
+            const items = mentionUI.querySelectorAll('.item');
+            items.forEach(it => it.classList.remove('active'));
+            if (mentionActiveIndex >= 0 && mentionActiveIndex < items.length) items[mentionActiveIndex].classList.add('active');
+        }
+
+        function onMentionKeyDown(e) {
+            if (mentionUI.style.display !== 'block') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); mentionActiveIndex = Math.min(mentionActiveIndex + 1, mentionCandidates.length - 1); highlightMentionActive(); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); mentionActiveIndex = Math.max(mentionActiveIndex - 1, 0); highlightMentionActive(); return; }
+            if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault();
+                const c = mentionCandidates[mentionActiveIndex] || mentionCandidates[0];
+                if (c) applyMention(c.username);
+                return;
+            }
+            if (e.key === 'Escape') { hideMention(); return; }
+        }
+
+        function applyMention(name) {
+            const input = document.getElementById('message-input');
+            const value = input.value;
+            if (!mentionToken) { hideMention(); return; }
+            const before = value.slice(0, mentionToken.start);
+            const after = value.slice(mentionToken.end);
+            const newVal = `${before}!${name}${after}`;
+            input.value = newVal;
+            // Move caret to end of inserted username
+            const caret = before.length + 1 + String(name).length;
+            input.setSelectionRange(caret, caret);
+            hideMention();
+            input.focus();
+        }
+
         // Add message to UI
         async function addMessageToUI(message) {
             console.log('Adding message to UI:', message);
@@ -3828,7 +4311,7 @@
                             </div>
                         </div>` : ''}
                     </div>
-                    <div class="message-text" data-original="${escapeHtml(messageText)}">${message.deleted ? '<i style="color:#8e9297;">This message was deleted</i>' : linkifyMessageText(messageText) + (message.edited ? ' <span class="message-edited-indicator" title="Edited">(edited)</span>' : '')}</div>
+                    <div class="message-text" data-original="${escapeHtml(messageText)}">${message.deleted ? '<i style="color:#8e9297;">This message was deleted</i>' : renderMessageText(messageText) + (message.edited ? ' <span class="message-edited-indicator" title="Edited">(edited)</span>' : '')}</div>
                     ${message.attachments && message.attachments.length > 0 ?
                         message.attachments.map(att =>
                             att.type === 'image' ?
@@ -3837,6 +4320,15 @@
                         ).join('') : ''}
                 </div>
             `;
+
+            // Apply alignment preference: by default left; when right is selected, only align current user's messages
+            try {
+                const alignPref = getMessageAlignPreference(); // 'left' | 'right'
+                const isMine = (currentUser && (message.userId === currentUser.id || message.senderId === currentUser.id));
+                if (alignPref === 'right' && isMine) {
+                    messageDiv.classList.add('align-right');
+                }
+            } catch {}
             if (editableByCurrent) {
                 messageDiv.addEventListener('mouseenter', () => {
                     const actions = messageDiv.querySelector('.message-actions');
@@ -3864,6 +4356,16 @@
             }
             scrollToBottom();
             console.log('Message added to UI successfully');
+        }
+
+        // Message alignment preference (local only for now)
+        const MSG_ALIGN_KEY = 'user_msg_align';
+        function getMessageAlignPreference(){
+            const v = localStorage.getItem(MSG_ALIGN_KEY);
+            return v === 'right' ? 'right' : 'left';
+        }
+        function setMessageAlignPreference(val){
+            localStorage.setItem(MSG_ALIGN_KEY, val === 'right' ? 'right' : 'left');
         }
 
         // Send message
@@ -4959,6 +5461,8 @@
                 loadKickableMembers();
             } else if (tab === 'admins') {
                 loadAdminsManagement();
+            } else if (tab === 'voice') {
+                // Placeholder: nothing to load yet
             } else if (tab === 'delete') {
                 const note = document.getElementById('delete-owner-note');
                 const btn = document.getElementById('delete-server-open-btn');
@@ -5441,27 +5945,39 @@
                         return;
                     }
                     const data = await resp.json();
-                    const roles = data.roles || [];
+                    const roles = (data.roles || []).map(r => ({
+                        ...r,
+                        // Normalize snake_case from DB to camelCase used in UI logic
+                        isDefault: typeof r.isDefault !== 'undefined' ? r.isDefault : !!r.is_default
+                    }));
 
                     if (!roles.length) {
                         rolesList.innerHTML = '<div>No roles yet</div>';
                         return;
                     }
 
-                    rolesList.innerHTML = roles.map(r => `
+                    rolesList.innerHTML = roles.map(r => {
+                        const isDefault = !!r.isDefault;
+                        const rawName = r.name || '';
+                        const normalized = isDefault
+                            ? '!everyone'
+                            : (/^@everyone$/i.test(rawName) ? '!everyone' : rawName);
+                        return `
                         <div class="role-item">
                             <div>
-                                <span class="role-name" style="color: ${r.color};">${escapeHtml(r.name)}</span>
-                                ${r.isDefault ? '<span style="color: #b9bbbe; font-size: 12px;">Default role for all members</span>' : ''}
+                                <span class="role-name" style="color: ${r.color};">${escapeHtml(normalized)}</span>
+                                ${isDefault ? '<span style="color: #b9bbbe; font-size: 12px;">Default role for all members</span>' : ''}
                             </div>
                             <div class="role-actions">
-                                ${r.isDefault ? '<button class="btn btn-sm btn-secondary" disabled>Default Role</button>' : `
-                                    <button class="btn btn-sm" onclick="editRole(${r.id})">Edit</button>
+                                ${isDefault ? `
+                                    <button class="btn btn-sm" title="Edit default role color" onclick="(async()=>{try{const resp=await fetch(\`/api/servers/${currentServer.id}/roles\`,{headers:{Authorization:'Bearer '+localStorage.getItem('token')}});if(!resp.ok)return;const data=await resp.json();const role=(data.roles||[]).find(rr=>rr.id==${r.id});if(role)openRoleEditModal(role);}catch(e){}})()">Edit Color</button>
+                                ` : `
+                                    <button class="btn btn-sm" onclick="(async()=>{try{const resp=await fetch(\`/api/servers/${currentServer.id}/roles\`,{headers:{Authorization:'Bearer '+localStorage.getItem('token')}});if(!resp.ok)return;const data=await resp.json();const role=(data.roles||[]).find(rr=>rr.id==${r.id});if(role)openRoleEditModal(role);}catch(e){}})()">Edit</button>
                                     <button class="btn btn-sm btn-secondary" onclick="deleteRole(${r.id})">Delete</button>
                                 `}
                             </div>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
                 } catch (err) {
                     console.error('Roles load error:', err);
                     rolesList.innerHTML = '<div>Error loading roles</div>';
@@ -5509,36 +6025,68 @@
             }
         }
 
-        async function editRole(roleId) {
-            if (!currentServer) return;
-            // Simple prompt-based editing for now
+        function openRoleEditModal(role) {
+            const modal = document.getElementById('role-edit-modal');
+            const nameInput = document.getElementById('role-edit-name');
+            const colorInput = document.getElementById('role-edit-color');
+            // Normalize is_default -> isDefault if needed
+            if (typeof role.isDefault === 'undefined' && typeof role.is_default !== 'undefined') role.isDefault = !!role.is_default;
+            modal.dataset.roleId = role.id;
+            // Default role naming rules: show '!everyone' in list, but editing should not allow changing the default role name
+            if (role.isDefault) {
+                nameInput.value = '!everyone';
+                nameInput.disabled = true;
+            } else {
+                nameInput.value = role.name || '';
+                nameInput.disabled = false;
+            }
+            colorInput.value = role.color || '#5865f2';
+            modal.style.display = 'block';
+        }
+
+        function closeRoleEditModal() {
+            const modal = document.getElementById('role-edit-modal');
+            modal.style.display = 'none';
+            modal.dataset.roleId = '';
+        }
+
+        async function submitRoleEdit() {
+            const modal = document.getElementById('role-edit-modal');
+            const roleId = modal.dataset.roleId;
+            if (!currentServer || !roleId) return;
             try {
-                // Fetch existing role
+                // Fetch current role to check defaults and original name (optional)
                 const rolesResp = await fetch(`/api/servers/${currentServer.id}/roles`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
                 if (!rolesResp.ok) return;
                 const rolesData = await rolesResp.json();
-                const role = (rolesData.roles || []).find(r => r.id == roleId);
+                const role = (rolesData.roles || []).map(r=>({
+                    ...r,
+                    isDefault: typeof r.isDefault !== 'undefined' ? r.isDefault : !!r.is_default
+                })).find(r => String(r.id) === String(roleId));
                 if (!role) return;
-                const newName = prompt('Role name:', role.name);
-                if (newName === null) return;
-                const newColor = prompt('Role color (hex):', role.color || '#5865f2');
-                if (newColor === null) return;
+
+                const nameInput = document.getElementById('role-edit-name');
+                const colorInput = document.getElementById('role-edit-color');
+                let newName = role.isDefault ? role.name : (nameInput.value || '').trim();
+                // Normalize '@everyone' to '!everyone' for UI, but backend likely expects original name; keep backend name when default.
+                if (!role.isDefault && /^@everyone$/i.test(newName)) newName = '!everyone';
+                const newColor = colorInput.value || '#5865f2';
+
+                const payload = role.isDefault ? { color: newColor } : { name: newName, color: newColor };
                 const resp = await fetch(`/api/servers/${currentServer.id}/roles/${roleId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
                     },
-                    body: JSON.stringify({ name: newName.trim(), color: newColor })
+                    body: JSON.stringify(payload)
                 });
                 const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) {
-                    showNotification(data.error || 'Failed to update role', 'error');
-                    return;
-                }
+                if (!resp.ok) { showNotification(data.error || 'Failed to update role', 'error'); return; }
                 showNotification('Role updated');
+                closeRoleEditModal();
                 loadServerRoles();
                 loadServerMembersForSettings();
                 await loadServerMembersCache(currentServer.id);
@@ -5879,6 +6427,132 @@
                 return `${pre}<a class="chat-link" href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
             });
             return linked;
+        }
+
+        // Render message text with linkify + mention highlighting
+        function renderMessageText(text) {
+            const html = linkifyMessageText(text || '');
+            // Highlight mentions like !username ONLY if username exists in current server; special style if it's me
+            try {
+                // Build fast lookups of valid usernames and role names in the current server
+                const validUsers = new Set();
+                const validRoles = new Set();
+                if (currentServer) {
+                    if (currentServerMembersMap && currentServerMembersMap.size > 0 && currentServerMembersCacheServerId === parseFloat(currentServer.id)) {
+                        for (const [, info] of currentServerMembersMap.entries()) {
+                            if (info && info.username) validUsers.add(String(info.username).toLowerCase());
+                        }
+                    }
+                    // Pull roles from cache if available
+                    const rolesMap = serverRolesCache.get(parseFloat(currentServer.id)) || {};
+                    for (const rid in rolesMap) {
+                        const r = rolesMap[rid];
+                        if (!r) continue;
+                        // Display name: default role is addressed as "everyone"
+                        const nm = r.isDefault ? 'everyone' : (r.name || '');
+                        if (nm) validRoles.add(String(nm).toLowerCase());
+                    }
+                }
+                const hasLookup = validUsers.size > 0 || validRoles.size > 0;
+                return html.replace(/!(\w{1,50})/g, (m, name) => {
+                    const lname = name.toLowerCase();
+                    if (!hasLookup) return m;
+                    const isValid = validUsers.has(lname) || validRoles.has(lname);
+                    if (!isValid) return m;
+                    // Unified styling for all mentions (user or role)
+                    return `<span class="mention">!${name}<\/span>`;
+                });
+            } catch { return html; }
+        }
+
+        // Notifications: fetch summary and populate state
+        async function fetchNotificationSummary() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            const resp = await fetch('/api/notifications/summary', { headers: { Authorization: `Bearer ${token}` } });
+            if (!resp.ok) return;
+            const { data } = await resp.json();
+            notifByChannel = new Map();
+            for (const r of data) {
+                const cid = parseFloat(r.channel_id);
+                notifByChannel.set(cid, {
+                    server_id: parseFloat(r.server_id),
+                    unread_messages: parseInt(r.unread_messages || 0),
+                    unread_mentions: parseInt(r.unread_mentions || 0)
+                });
+            }
+            updateServerBadges();
+            updateChannelBadges();
+        }
+
+        // Update server icons with white line for any unread and red dot for mentions
+        function updateServerBadges() {
+            try {
+                const serversContainer = document.getElementById('user-servers');
+                const items = serversContainer ? serversContainer.querySelectorAll('.server-item') : [];
+                const countsByServer = new Map(); // serverId -> { msg, mention }
+                for (const [cid, v] of notifByChannel.entries()) {
+                    if (!v || v.server_id === undefined || v.server_id === null) continue;
+                    const sid = parseFloat(v.server_id);
+                    const cur = countsByServer.get(sid) || { msg: 0, mention: 0 };
+                    cur.msg += (v.unread_messages || 0);
+                    cur.mention += (v.unread_mentions || 0);
+                    countsByServer.set(sid, cur);
+                }
+                items.forEach(wrap => {
+                    const sid = parseFloat(wrap.dataset.serverId);
+                    const c = countsByServer.get(sid) || { msg: 0, mention: 0 };
+                    // White dot only for regular unread messages (not mentions)
+                    wrap.classList.toggle('has-unread', c.msg > 0);
+                    // Mentions specifically show red dot (bottom-right)
+                    wrap.classList.toggle('has-mention', c.mention > 0);
+                });
+            } catch (e) { console.warn('updateServerBadges error', e); }
+        }
+
+        // Update channel list badges for current server
+        function updateChannelBadges() {
+            try {
+                if (!currentServer) return;
+                const list = document.getElementById('text-channels-list');
+                const items = list ? list.querySelectorAll('.channel-item') : [];
+                const curServerId = parseFloat(currentServer.id);
+                items.forEach(item => {
+                    // Reset first
+                    const badge = item.querySelector('.badge');
+                    if (badge) { badge.textContent = ''; badge.style.display = 'none'; badge.classList.remove('badge-mention'); }
+                    item.classList.remove('has-unread');
+
+                    const cid = parseFloat(item.dataset.channelId);
+                    const v = notifByChannel.get(cid);
+                    // Only apply if this notification record belongs to the current server
+                    const isForThisServer = v && parseFloat(v.server_id) === curServerId;
+                    if (isForThisServer) {
+                        const mentionCount = (v.unread_mentions || 0);
+                        const msgCount = (v.unread_messages || 0);
+                        if (mentionCount > 0 && badge) {
+                            badge.textContent = String(mentionCount);
+                            badge.classList.add('badge-mention');
+                            badge.style.display = 'inline-block';
+                        } else if (msgCount > 0) {
+                            // No mentions, but unread messages -> show white dot
+                            item.classList.add('has-unread');
+                        }
+                    }
+                });
+            } catch (e) { console.warn('updateChannelBadges error', e); }
+        }
+
+        // Mark a channel as read (clear notifications on server)
+        async function markChannelRead(channelId) {
+            try {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/notifications/channels/${channelId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                const cid = parseFloat(channelId);
+                if (notifByChannel.has(cid)) notifByChannel.set(cid, { ...notifByChannel.get(cid), unread_messages: 0, unread_mentions: 0 });
+                updateServerBadges();
+                updateChannelBadges();
+            } catch (e) { console.warn('markChannelRead network error', e); }
         }
 
         // Show notification to user
@@ -7352,6 +8026,25 @@
             showAccountSection('profile');
             // Defer compression to next frame so layout metrics are accurate
             requestAnimationFrame(autoCompressBioToolbar);
+
+            // Initialize Baby Settings controls
+            try {
+                const pref = getMessageAlignPreference();
+                const sel = document.getElementById('msg-align-select');
+                if (sel) {
+                    sel.value = pref;
+                    sel.onchange = (e) => {
+                        const val = e.target.value === 'right' ? 'right' : 'left';
+                        setMessageAlignPreference(val);
+                        // Update existing message DOM to reflect change instantly
+                        document.querySelectorAll('#messages-container .message').forEach(el => {
+                            const userId = el.querySelector('.message-author')?.getAttribute('data-user-id');
+                            const isMine = userId && currentUser && parseFloat(userId) === parseFloat(currentUser.id);
+                            if (val === 'right' && isMine) el.classList.add('align-right'); else el.classList.remove('align-right');
+                        });
+                    };
+                }
+            } catch {}
         }
 
         function closeAccountSettings() {
@@ -7360,7 +8053,7 @@
         }
 
         function showAccountSection(id) {
-            const sections = ['profile','voice'];
+            const sections = ['profile','voice','baby'];
             sections.forEach(sec => {
                 const el = document.getElementById(`account-section-${sec}`);
                 if (el) el.style.display = (sec === id) ? 'block' : 'none';
@@ -7905,7 +8598,8 @@
                 const chips = [];
                 if (member?.roleId && rolesMap[member.roleId]) {
                     const r = rolesMap[member.roleId];
-                    chips.push({ name: r.name || 'Role', color: r.color || '#5865f2' });
+                    const disp = (typeof getRoleDisplayName === 'function') ? getRoleDisplayName(r) : (r.name || 'Role');
+                    chips.push({ name: disp || 'Role', color: r.color || '#5865f2' });
                 }
                 // Always include the base role label for clarity
                 if (member?.role) {
@@ -8019,7 +8713,8 @@
                     const chips = [];
                     if (member?.roleId && rolesMap[member.roleId]) {
                         const r = rolesMap[member.roleId];
-                        chips.push({ name: r.name || 'Role', color: r.color || '#5865f2' });
+                        const disp = (typeof getRoleDisplayName === 'function') ? getRoleDisplayName(r) : (r.name || 'Role');
+                        chips.push({ name: disp || 'Role', color: r.color || '#5865f2' });
                     }
                     if (member?.role) {
                         const baseColor = member.role === 'owner' ? '#43b581' : member.role === 'admin' ? '#7289da' : '#8e9297';

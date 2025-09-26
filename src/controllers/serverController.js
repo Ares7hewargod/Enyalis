@@ -293,7 +293,7 @@ exports.updateRole = async (req, res) => {
         const { serverId, roleId } = req.params;
         const { name, color, permissions, position } = req.body;
         const userId = req.userId;
-        if (DB_ENABLED && roleRepo) {
+                if (DB_ENABLED && roleRepo) {
           const { getPool } = require('../db');
           const pool = getPool();
           const actor = await pool.query('SELECT role FROM server_members WHERE server_id = $1 AND user_id = $2', [serverId, userId]);
@@ -301,15 +301,28 @@ exports.updateRole = async (req, res) => {
           // ensure not default
           const defaultCheck = await pool.query('SELECT is_default FROM server_roles WHERE id = $1 AND server_id = $2', [roleId, serverId]);
           if (!defaultCheck.rows.length) return res.status(404).json({ error: 'Role not found' });
-          if (defaultCheck.rows[0].is_default) return res.status(400).json({ error: 'Cannot modify default role' });
-          const updated = await roleRepo.updateRole(serverId, roleId, { name: name&&name.trim(), color, permissions: Array.isArray(permissions)?permissions:undefined, position });
-          return res.json({ role: updated, message: 'Role updated successfully' });
+                    if (defaultCheck.rows[0].is_default) {
+                        // Allow updating color only for default role
+                        if (typeof color === 'undefined' || color === null) {
+                            return res.status(400).json({ error: 'Cannot modify default role (only color is allowed)' });
+                        }
+                        const updated = await roleRepo.updateDefaultRoleColor(serverId, roleId, color);
+                        return res.json({ role: updated, message: 'Default role color updated successfully' });
+                    }
+                    const updated = await roleRepo.updateRole(serverId, roleId, { name: name&&name.trim(), color, permissions: Array.isArray(permissions)?permissions:undefined, position });
+                    return res.json({ role: updated, message: 'Role updated successfully' });
         }
         const actor = serverMembers.find(m => m.serverId == serverId && m.userId === userId);
         if (!actor || (actor.role !== 'owner' && actor.role !== 'admin')) return res.status(403).json({ error: 'You do not have permission to update roles' });
         const role = roles.find(r => r.id == roleId && r.serverId == serverId);
         if (!role) return res.status(404).json({ error: 'Role not found' });
-        if (role.isDefault) return res.status(400).json({ error: 'Cannot modify default role' });
+                if (role.isDefault) {
+                        if (typeof color === 'undefined' || color === null) {
+                            return res.status(400).json({ error: 'Cannot modify default role (only color is allowed)' });
+                        }
+                        role.color = color;
+                        return res.json({ role, message: 'Default role color updated successfully (memory)' });
+                }
         if (name && name.trim()) role.name = name.trim();
         if (color !== undefined) role.color = color;
         if (Array.isArray(permissions)) role.permissions = permissions;

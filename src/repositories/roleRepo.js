@@ -53,6 +53,17 @@ module.exports = {
     );
     return rows[0] || null;
   },
+  async updateDefaultRoleColor(serverId, roleId, color) {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      `UPDATE server_roles SET
+         color = COALESCE($3, color)
+       WHERE id = $2 AND server_id = $1 AND is_default = true
+       RETURNING *`,
+      [serverId, roleId, color]
+    );
+    return rows[0] || null;
+  },
   async deleteRole(serverId, roleId) {
     const pool = getPool();
     const { rowCount } = await pool.query(

@@ -161,6 +161,38 @@ async function init() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS message_attachments_dm_idx ON message_attachments(direct_message_id);
     `);
+    // Notifications: per-user unread markers for channels and mentions
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        server_id BIGINT REFERENCES servers(id) ON DELETE CASCADE,
+        channel_id BIGINT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+        message_id BIGINT REFERENCES channel_messages(id) ON DELETE CASCADE,
+        type VARCHAR(16) NOT NULL CHECK (type IN ('message','mention')),
+        read BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS notifications_user_read_idx ON notifications(user_id, read, created_at DESC, id DESC);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS notifications_channel_idx ON notifications(user_id, channel_id, read);
+    `);
+    // Mention targets for channel messages
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS channel_message_mentions (
+        id BIGSERIAL PRIMARY KEY,
+        message_id BIGINT NOT NULL REFERENCES channel_messages(id) ON DELETE CASCADE,
+        mentioned_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(message_id, mentioned_user_id)
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS channel_message_mentions_msg_idx ON channel_message_mentions(message_id);
+    `);
     await pool.query('COMMIT');
     console.log('[DB] Users table ensured');
     if (!lastDbOk) {
